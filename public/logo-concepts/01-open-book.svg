@@ -1,0 +1,9 @@
+<svg width="340" height="96" viewBox="0 0 340 96" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Concept 1 — Open Book">
+  <rect width="340" height="96" rx="14" fill="#FFFFFF"/>
+  <g transform="translate(12 26) scale(1.12)">
+    <path d="M23 11.3 C17.4 8.6 9.4 7.8 4.8 9.4 C4.3 9.6 4 10.1 4 10.7 L4 33.3 C4 34.1 4.7 34.7 5.5 34.5 C10.7 33.1 17.6 33.9 23 36.4 Z" fill="#16203F"/>
+    <path d="M25 11.3 C30.6 8.6 38.6 7.8 43.2 9.4 C43.7 9.6 44 10.1 44 10.7 L44 33.3 C44 34.1 43.3 34.7 42.5 34.5 C37.3 33.1 30.4 33.9 25 36.4 Z" fill="#C9A24A"/>
+  </g>
+  <text x="74" y="56" font-family="Inter, 'Segoe UI', Arial, sans-serif" font-size="29" font-weight="700" letter-spacing="-0.6" fill="#16203F">Taleem<tspan font-weight="400" fill="#64748B"> Cloud</tspan></text>
+  <text x="74" y="74" font-family="Inter, Arial, sans-serif" font-size="11" letter-spacing="2.5" fill="#94A3B8">CONCEPT 1 · OPEN BOOK</text>
+</svg>

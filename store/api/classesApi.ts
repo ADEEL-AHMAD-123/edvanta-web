@@ -1,0 +1,81 @@
+import { baseApi } from './baseApi';
+
+export interface Section {
+  id: string;
+  name: string;
+  capacity: number | null;
+  currentCount: number;
+  teacherId: string | null;
+  teacherName: string | null;
+}
+
+export interface ClassItem {
+  id: string;
+  name: string;
+  level: number;
+  academicYear: string;
+  isActive: boolean;
+  sections: Section[];
+}
+
+interface ApiArray<T> {
+  success: boolean;
+  data: T[];
+  message: string;
+}
+
+interface ApiObject<T> {
+  success: boolean;
+  data: T;
+  message: string;
+}
+
+export interface SectionInput {
+  id?: string;
+  name: string;
+  capacity?: number;
+  teacherId?: string;
+}
+
+export interface CreateClassBody {
+  name: string;
+  level: number;
+  academicYear?: string; // implicit (active year) — kept optional
+  sections: SectionInput[];
+}
+
+export interface UpdateClassBody {
+  name?: string;
+  level?: number;
+  academicYear?: string;
+  isActive?: boolean;
+  sections?: SectionInput[];
+}
+
+export const classesApi = baseApi.injectEndpoints({
+  endpoints: (builder) => ({
+    getClasses: builder.query<ApiArray<ClassItem>, { activeOnly?: boolean; all?: boolean; academicYearId?: string } | void>({
+      query: (params) => {
+        const search = new URLSearchParams();
+        if (params?.activeOnly) search.set('activeOnly', 'true');
+        if (params?.all) search.set('all', 'true');
+        if (params?.academicYearId) search.set('academicYearId', params.academicYearId);
+        const qs = search.toString();
+        return `/classes${qs ? `?${qs}` : ''}`;
+      },
+      providesTags: [{ type: 'Classes', id: 'LIST' }],
+    }),
+
+    createClass: builder.mutation<ApiObject<ClassItem>, CreateClassBody>({
+      query: (body) => ({ url: '/classes', method: 'POST', body }),
+      invalidatesTags: [{ type: 'Classes', id: 'LIST' }],
+    }),
+
+    updateClass: builder.mutation<ApiObject<ClassItem>, { id: string; body: UpdateClassBody }>({
+      query: ({ id, body }) => ({ url: `/classes/${id}`, method: 'PATCH', body }),
+      invalidatesTags: [{ type: 'Classes', id: 'LIST' }],
+    }),
+  }),
+});
+
+export const { useGetClassesQuery, useCreateClassMutation, useUpdateClassMutation } = classesApi;

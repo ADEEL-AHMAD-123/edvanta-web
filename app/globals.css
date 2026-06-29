@@ -1,0 +1,356 @@
+/* Fonts must come before Tailwind directives */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Noto+Nastaliq+Urdu:wght@400;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ════════════════════════════════════════════════════════════════════
+   DESIGN TOKENS
+   Every color in the app is driven by these semantic CSS variables.
+   Switching the `data-theme` attribute on <html> re-themes EVERY
+   component automatically. Values are raw HSL channels (H S% L%) so
+   Tailwind's `<alpha-value>` opacity modifiers keep working, e.g.
+   `bg-primary/10`, `text-foreground/70`.
+   ════════════════════════════════════════════════════════════════════ */
+
+@layer base {
+  /* ── THEME: EDVANTA NAVY (default) ─────────────────────────────── */
+  :root,
+  [data-theme='blue'] {
+    --background: 36 33% 97%;
+    --foreground: 222 32% 13%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 32% 13%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 32% 13%;
+
+    /* Brand: deep navy primary + academic gold accent (matches the logo) */
+    --primary: 222 47% 28%;
+    --primary-foreground: 40 30% 97%;
+    --primary-hover: 222 47% 22%;
+    --primary-soft: 222 44% 92%;
+    --primary-soft-foreground: 222 47% 28%;
+
+    --secondary: 36 24% 95%;
+    --secondary-foreground: 222 30% 22%;
+
+    --muted: 36 24% 95%;
+    --muted-foreground: 28 9% 44%;
+
+    --accent: 41 54% 52%;
+    --accent-foreground: 222 47% 15%;
+
+    --success: 152 55% 38%;
+    --success-foreground: 0 0% 100%;
+    --success-soft: 152 48% 92%;
+
+    --warning: 38 80% 46%;
+    --warning-foreground: 0 0% 100%;
+    --warning-soft: 42 86% 90%;
+
+    --danger: 4 66% 50%;
+    --danger-foreground: 0 0% 100%;
+    --danger-soft: 6 80% 95%;
+
+    --info: 205 70% 42%;
+    --info-foreground: 0 0% 100%;
+
+    --border: 34 22% 89%;
+    --input: 34 22% 89%;
+    --ring: 222 47% 28%;
+
+    --sidebar: 222 47% 13%;
+    --sidebar-foreground: 40 30% 96%;
+    --sidebar-muted: 217 18% 62%;
+    --sidebar-accent: 222 40% 19%;
+    --sidebar-active: 41 54% 52%;
+    --sidebar-active-foreground: 222 47% 14%;
+    --sidebar-border: 222 35% 22%;
+
+    --chart-1: 222 47% 32%;
+    --chart-2: 41 54% 52%;
+    --chart-3: 174 52% 38%;
+    --chart-4: 215 28% 55%;
+    --chart-5: 345 45% 48%;
+
+    --radius: 0.85rem;
+  }
+
+  /* ── THEME: EMERALD GREEN ─────────────────────────────────────── */
+  [data-theme='green'] {
+    --background: 150 40% 98%;
+    --foreground: 155 40% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 155 40% 11%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 155 40% 11%;
+
+    --primary: 158 64% 38%;
+    --primary-foreground: 0 0% 100%;
+    --primary-hover: 159 70% 30%;
+    --primary-soft: 152 76% 90%;
+    --primary-soft-foreground: 158 70% 25%;
+
+    --secondary: 150 30% 95%;
+    --secondary-foreground: 155 40% 20%;
+
+    --muted: 150 30% 95%;
+    --muted-foreground: 155 12% 42%;
+
+    --accent: 24 95% 53%;
+    --accent-foreground: 0 0% 100%;
+
+    --success: 142 71% 40%;
+    --success-foreground: 0 0% 100%;
+    --success-soft: 142 70% 92%;
+
+    --warning: 38 92% 48%;
+    --warning-foreground: 0 0% 100%;
+    --warning-soft: 48 96% 89%;
+
+    --danger: 0 72% 51%;
+    --danger-foreground: 0 0% 100%;
+    --danger-soft: 0 86% 95%;
+
+    --info: 199 89% 48%;
+    --info-foreground: 0 0% 100%;
+
+    --border: 150 25% 88%;
+    --input: 150 25% 88%;
+    --ring: 158 64% 38%;
+
+    --sidebar: 158 45% 12%;
+    --sidebar-foreground: 150 40% 96%;
+    --sidebar-muted: 150 20% 65%;
+    --sidebar-accent: 158 40% 17%;
+    --sidebar-active: 158 64% 42%;
+    --sidebar-active-foreground: 0 0% 100%;
+    --sidebar-border: 158 35% 22%;
+
+    --chart-1: 158 64% 42%;
+    --chart-2: 199 89% 48%;
+    --chart-3: 38 92% 50%;
+    --chart-4: 263 70% 58%;
+    --chart-5: 21 90% 52%;
+  }
+
+  /* ── THEME: ROYAL PURPLE ──────────────────────────────────────── */
+  [data-theme='purple'] {
+    --background: 270 40% 99%;
+    --foreground: 270 40% 12%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 270 40% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 270 40% 12%;
+
+    --primary: 263 70% 50%;
+    --primary-foreground: 0 0% 100%;
+    --primary-hover: 263 70% 42%;
+    --primary-soft: 269 75% 94%;
+    --primary-soft-foreground: 263 60% 38%;
+
+    --secondary: 270 30% 96%;
+    --secondary-foreground: 270 40% 22%;
+
+    --muted: 270 30% 96%;
+    --muted-foreground: 270 10% 45%;
+
+    --accent: 330 81% 60%;
+    --accent-foreground: 0 0% 100%;
+
+    --success: 142 71% 40%;
+    --success-foreground: 0 0% 100%;
+    --success-soft: 142 70% 93%;
+
+    --warning: 38 92% 48%;
+    --warning-foreground: 0 0% 100%;
+    --warning-soft: 48 96% 89%;
+
+    --danger: 0 72% 51%;
+    --danger-foreground: 0 0% 100%;
+    --danger-soft: 0 86% 95%;
+
+    --info: 199 89% 48%;
+    --info-foreground: 0 0% 100%;
+
+    --border: 270 25% 90%;
+    --input: 270 25% 90%;
+    --ring: 263 70% 50%;
+
+    --sidebar: 265 50% 13%;
+    --sidebar-foreground: 270 40% 96%;
+    --sidebar-muted: 270 15% 65%;
+    --sidebar-accent: 265 40% 19%;
+    --sidebar-active: 263 70% 58%;
+    --sidebar-active-foreground: 0 0% 100%;
+    --sidebar-border: 265 35% 24%;
+
+    --chart-1: 263 70% 58%;
+    --chart-2: 330 81% 60%;
+    --chart-3: 199 89% 48%;
+    --chart-4: 158 64% 42%;
+    --chart-5: 38 92% 50%;
+  }
+
+  /* ── THEME: SUNSET ORANGE ─────────────────────────────────────── */
+  [data-theme='orange'] {
+    --background: 30 50% 98%;
+    --foreground: 24 30% 12%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 24 30% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 24 30% 12%;
+
+    --primary: 21 90% 48%;
+    --primary-foreground: 0 0% 100%;
+    --primary-hover: 19 91% 40%;
+    --primary-soft: 28 100% 92%;
+    --primary-soft-foreground: 17 80% 35%;
+
+    --secondary: 30 40% 95%;
+    --secondary-foreground: 24 30% 22%;
+
+    --muted: 30 40% 95%;
+    --muted-foreground: 24 10% 42%;
+
+    --accent: 199 89% 48%;
+    --accent-foreground: 0 0% 100%;
+
+    --success: 142 71% 40%;
+    --success-foreground: 0 0% 100%;
+    --success-soft: 142 70% 93%;
+
+    --warning: 38 92% 48%;
+    --warning-foreground: 0 0% 100%;
+    --warning-soft: 48 96% 89%;
+
+    --danger: 0 72% 51%;
+    --danger-foreground: 0 0% 100%;
+    --danger-soft: 0 86% 95%;
+
+    --info: 199 89% 48%;
+    --info-foreground: 0 0% 100%;
+
+    --border: 30 30% 89%;
+    --input: 30 30% 89%;
+    --ring: 21 90% 48%;
+
+    --sidebar: 20 40% 13%;
+    --sidebar-foreground: 30 40% 96%;
+    --sidebar-muted: 30 15% 65%;
+    --sidebar-accent: 20 35% 18%;
+    --sidebar-active: 21 90% 52%;
+    --sidebar-active-foreground: 0 0% 100%;
+    --sidebar-border: 20 30% 24%;
+
+    --chart-1: 21 90% 52%;
+    --chart-2: 199 89% 48%;
+    --chart-3: 142 71% 42%;
+    --chart-4: 263 70% 58%;
+    --chart-5: 330 81% 60%;
+  }
+
+  /* ── THEME: SLATE DARK ────────────────────────────────────────── */
+  [data-theme='dark'] {
+    --background: 222 47% 11%;
+    --foreground: 210 40% 96%;
+
+    --card: 222 40% 14%;
+    --card-foreground: 210 40% 96%;
+    --popover: 222 40% 14%;
+    --popover-foreground: 210 40% 96%;
+
+    --primary: 217 91% 60%;
+    --primary-foreground: 222 47% 11%;
+    --primary-hover: 213 94% 68%;
+    --primary-soft: 217 50% 22%;
+    --primary-soft-foreground: 213 94% 80%;
+
+    --secondary: 217 33% 20%;
+    --secondary-foreground: 210 40% 96%;
+
+    --muted: 217 33% 18%;
+    --muted-foreground: 215 20% 65%;
+
+    --accent: 24 95% 55%;
+    --accent-foreground: 222 47% 11%;
+
+    --success: 142 71% 45%;
+    --success-foreground: 222 47% 11%;
+    --success-soft: 142 40% 20%;
+
+    --warning: 38 92% 55%;
+    --warning-foreground: 222 47% 11%;
+    --warning-soft: 38 40% 22%;
+
+    --danger: 0 72% 60%;
+    --danger-foreground: 222 47% 11%;
+    --danger-soft: 0 40% 25%;
+
+    --info: 199 89% 55%;
+    --info-foreground: 222 47% 11%;
+
+    --border: 217 33% 22%;
+    --input: 217 33% 24%;
+    --ring: 217 91% 60%;
+
+    --sidebar: 222 47% 9%;
+    --sidebar-foreground: 210 40% 96%;
+    --sidebar-muted: 215 20% 60%;
+    --sidebar-accent: 217 33% 15%;
+    --sidebar-active: 217 91% 60%;
+    --sidebar-active-foreground: 222 47% 11%;
+    --sidebar-border: 217 33% 18%;
+
+    --chart-1: 217 91% 60%;
+    --chart-2: 158 64% 48%;
+    --chart-3: 38 92% 55%;
+    --chart-4: 263 70% 64%;
+    --chart-5: 330 81% 66%;
+  }
+
+  * {
+    border-color: hsl(var(--border));
+  }
+
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    transition: background-color 0.2s ease, color 0.2s ease;
+  }
+}
+
+/* ── RTL (Urdu) ────────────────────────────────────────────────── */
+[dir='rtl'] {
+  font-family: 'Noto Nastaliq Urdu', serif;
+}
+
+/* ── Scrollbar (token-driven) ──────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: hsl(var(--muted));
+}
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.35);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.55);
+}
+
+/* ════════════════════════════════════════════════════════════════
+   Semantic component utility classes — all token driven.
+   ════════════════════════════════════════════════════════════════ */
+@layer components {
+  .label {
+    @apply block text-sm font-medium text-foreground mb-1.5;
+  }
+}

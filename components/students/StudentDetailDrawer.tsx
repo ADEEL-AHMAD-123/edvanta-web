@@ -1,0 +1,149 @@
+'use client';
+
+import { useState } from 'react';
+import { X, Pencil, UserMinus, AlertCircle } from 'lucide-react';
+import toast from 'react-hot-toast';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Sheet, SheetContent, SheetClose } from '@/components/ui/sheet';
+import {
+  useGetStudentQuery,
+  useDeleteStudentMutation,
+  type StudentListItem,
+} from '@/store/api/studentsApi';
+import { getInitials } from '@/lib/utils';
+
+interface Props {
+  studentId: string | null;
+  open: boolean;
+  onClose: () => void;
+  onEdit: (s: StudentListItem) => void;
+}
+
+function Row({ label, value }: { label: string; value?: string | null }) {
+  return (
+    <div className="flex items-center justify-between gap-4 py-2.5">
+      <span className="text-sm text-muted-foreground">{label}</span>
+      <span className="text-sm font-medium text-foreground text-right">{value || '—'}</span>
+    </div>
+  );
+}
+
+export function StudentDetailDrawer({ studentId, open, onClose, onEdit }: Props) {
+  const { data, isLoading } = useGetStudentQuery(studentId as string, { skip: !studentId });
+  const [deleteStudent, { isLoading: deleting }] = useDeleteStudentMutation();
+  const [confirming, setConfirming] = useState(false);
+
+  const s = data?.data as any;
+
+  const handleDeactivate = async () => {
+    if (!studentId) return;
+    try {
+      await deleteStudent(studentId).unwrap();
+      toast.success('Student deactivated');
+      setConfirming(false);
+      onClose();
+    } catch (e: any) {
+      toast.error(e?.data?.error?.message || 'Could not deactivate');
+    }
+  };
+
+  return (
+    <Sheet open={open} onOpenChange={(o) => { if (!o) { setConfirming(false); onClose(); } }}>
+      <SheetContent side="right" hideClose className="w-full bg-card text-card-foreground sm:w-[440px]">
+        <div className="flex h-full flex-col">
+          <div className="flex items-center justify-between border-b border-border px-5 py-4">
+            <h2 className="text-lg font-semibold">Student details</h2>
+            <SheetClose className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground">
+              <X size={18} />
+            </SheetClose>
+          </div>
+
+          <div className="flex-1 overflow-y-auto px-5 py-5">
+            {isLoading || !s ? (
+              <div className="space-y-3">
+                <Skeleton className="h-16 w-full" />
+                <Skeleton className="h-40 w-full" />
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center gap-3">
+                  <span className="flex h-14 w-14 items-center justify-center rounded-full bg-primary-soft text-base font-semibold text-primary-soft-foreground">
+                    {getInitials(s.firstName, s.lastName)}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="truncate text-lg font-semibold text-foreground">{s.name}</p>
+                    <p className="text-sm text-muted-foreground">{s.rollNumber}</p>
+                  </div>
+                  <Badge
+                    variant={s.status === 'active' ? 'success' : 'neutral'}
+                    className="ml-auto capitalize"
+                  >
+                    {s.status}
+                  </Badge>
+                </div>
+
+                <div className="mt-5 divide-y divide-border rounded-xl border border-border px-4">
+                  <Row label="Class" value={s.className ? `${s.className}${s.section ? ` — ${s.section}` : ''}` : null} />
+                  <Row label="Admission no." value={s.admissionNumber} />
+                  <Row label="Phone" value={s.phone} />
+                  <Row label="Email" value={s.email} />
+                  <Row label="Gender" value={s.gender} />
+                  <Row label="Blood group" value={s.bloodGroup} />
+                  <Row label="City" value={s.city} />
+                </div>
+
+                {s.guardians?.length > 0 && (
+                  <div className="mt-5">
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      Guardians
+                    </p>
+                    <div className="space-y-2">
+                      {s.guardians.map((g: any) => (
+                        <div key={g.id} className="flex items-center justify-between rounded-lg border border-border px-3 py-2 text-sm">
+                          <span className="text-foreground">{g.name}</span>
+                          <span className="text-muted-foreground">{g.phone}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          {s && (
+            <div className="border-t border-border px-5 py-4">
+              {confirming ? (
+                <div className="flex items-center gap-2 rounded-lg bg-danger-soft px-3 py-2.5">
+                  <AlertCircle size={16} className="shrink-0 text-danger" />
+                  <span className="flex-1 text-sm text-danger">Deactivate this student?</span>
+                  <Button variant="ghost" size="sm" onClick={() => setConfirming(false)}>Cancel</Button>
+                  <Button variant="danger" size="sm" loading={deleting} onClick={handleDeactivate}>
+                    Deactivate
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex items-center justify-between gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-danger hover:bg-danger-soft"
+                    onClick={() => setConfirming(true)}
+                    disabled={s.status !== 'active'}
+                  >
+                    <UserMinus size={16} /> Deactivate
+                  </Button>
+                  <Button size="sm" onClick={() => onEdit(s)}>
+                    <Pencil size={16} /> Edit
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </SheetContent>
+    </Sheet>
+  );
+}

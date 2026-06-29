@@ -1,0 +1,55 @@
+import { baseApi } from './baseApi';
+
+export interface AcademicYear {
+  id: string;
+  name: string;
+  startDate: string | null;
+  endDate: string | null;
+  isActive: boolean;
+  isClosed: boolean;
+}
+
+interface ApiArray<T> { success: boolean; data: T[]; message: string }
+interface ApiObject<T> { success: boolean; data: T; message: string }
+
+export interface PromoteBody {
+  items: { fromClassId: string; fromSectionId: string; toClassId: string; toSectionId: string }[];
+  graduateClassIds?: string[];
+}
+
+export const academicYearsApi = baseApi.injectEndpoints({
+  endpoints: (builder) => ({
+    getAcademicYears: builder.query<ApiArray<AcademicYear>, void>({
+      query: () => '/academic-years',
+      providesTags: [{ type: 'Classes', id: 'YEARS' }],
+    }),
+    getActiveYear: builder.query<ApiObject<AcademicYear>, void>({
+      query: () => '/academic-years/active',
+      providesTags: [{ type: 'Classes', id: 'ACTIVE_YEAR' }],
+    }),
+    createAcademicYear: builder.mutation<ApiObject<{ id: string }>, { name: string; startDate?: string; endDate?: string; activate?: boolean }>({
+      query: (body) => ({ url: '/academic-years', method: 'POST', body }),
+      invalidatesTags: [{ type: 'Classes', id: 'YEARS' }, { type: 'Classes', id: 'ACTIVE_YEAR' }],
+    }),
+    activateAcademicYear: builder.mutation<ApiObject<unknown>, string>({
+      query: (id) => ({ url: `/academic-years/${id}/activate`, method: 'POST' }),
+      invalidatesTags: [
+        { type: 'Classes', id: 'YEARS' },
+        { type: 'Classes', id: 'ACTIVE_YEAR' },
+        { type: 'Classes', id: 'LIST' },
+      ],
+    }),
+    promoteStudents: builder.mutation<ApiObject<{ moved: number; graduated: number }>, PromoteBody>({
+      query: (body) => ({ url: '/academic-years/promote', method: 'POST', body }),
+      invalidatesTags: [{ type: 'Students', id: 'LIST' }, { type: 'Students', id: 'STATS' }],
+    }),
+  }),
+});
+
+export const {
+  useGetAcademicYearsQuery,
+  useGetActiveYearQuery,
+  useCreateAcademicYearMutation,
+  useActivateAcademicYearMutation,
+  usePromoteStudentsMutation,
+} = academicYearsApi;
