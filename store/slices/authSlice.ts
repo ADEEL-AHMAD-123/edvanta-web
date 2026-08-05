@@ -10,6 +10,7 @@ interface AuthUser {
   email?: string;
   profilePhoto?: string;
   institutionId?: string;
+  mustChangePassword?: boolean;
 }
 
 interface AuthState {

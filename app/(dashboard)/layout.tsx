@@ -6,6 +6,7 @@ import { Sidebar } from '@/components/layout/Sidebar';
 import { MobileSidebar } from '@/components/layout/MobileSidebar';
 import { Navbar } from '@/components/layout/Navbar';
 import { LayoutProvider } from '@/components/layout/layout-context';
+import { ForcePasswordChangeGate } from '@/components/auth/ForcePasswordChangeGate';
 import { useAppSelector } from '@/store/hooks';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -24,6 +25,10 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
       </div>
     );
+  }
+
+  if (user.mustChangePassword) {
+    return <ForcePasswordChangeGate />;
   }
 
   return (

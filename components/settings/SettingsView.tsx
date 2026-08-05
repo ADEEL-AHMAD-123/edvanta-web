@@ -123,6 +123,7 @@ const passwordSchema = z.object({
 type PasswordForm = z.infer<typeof passwordSchema>;
 
 function SecurityTab() {
+  const dispatch = useAppDispatch();
   const [changePassword, { isLoading }] = useChangePasswordMutation();
   const { register, handleSubmit, reset, formState: { errors } } = useForm<PasswordForm>({
     resolver: zodResolver(passwordSchema),
@@ -131,6 +132,7 @@ function SecurityTab() {
   const onSubmit = async (values: PasswordForm) => {
     try {
       await changePassword({ currentPassword: values.currentPassword, newPassword: values.newPassword }).unwrap();
+      dispatch(updateUser({ mustChangePassword: false }));
       toast.success('Password changed');
       reset();
     } catch (e: any) {

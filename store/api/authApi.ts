@@ -20,6 +20,7 @@ interface LoginResponse {
       email?: string;
       profilePhoto?: string;
       institutionId?: string;
+      mustChangePassword?: boolean;
     };
   };
   message: string;
