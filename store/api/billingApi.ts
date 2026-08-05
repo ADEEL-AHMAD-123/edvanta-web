@@ -28,6 +28,15 @@ export interface MyBilling {
   bank: { name: string | null; accountTitle: string | null; iban: string | null };
 }
 
+export interface BillingPlan {
+  key: string;
+  name: string;
+  price: number;
+  studentsLimit: number;
+  storageGB: number;
+  features: string[];
+}
+
 export interface PendingPayment {
   institutionId: string;
   institutionName: string;
@@ -46,6 +55,13 @@ export const billingApi = baseApi.injectEndpoints({
     getMyBilling: builder.query<ApiObject<MyBilling>, void>({
       query: () => '/billing/me',
       providesTags: [{ type: 'Billing', id: 'ME' }],
+    }),
+    getBillingPlans: builder.query<ApiObject<BillingPlan[]>, void>({
+      query: () => '/billing/plans',
+    }),
+    selectPlan: builder.mutation<ApiObject<{ plan: string; monthlyAmount: number }>, { planKey: string }>({
+      query: (body) => ({ url: '/billing/plan', method: 'POST', body }),
+      invalidatesTags: [{ type: 'Billing', id: 'ME' }],
     }),
     billingCheckout: builder.mutation<ApiObject<{ settled: boolean; gateway: string; reference: string; redirectUrl?: string | null }>, { gateway: Gateway }>({
       query: (body) => ({ url: '/billing/checkout', method: 'POST', body }),
@@ -74,6 +90,8 @@ export const billingApi = baseApi.injectEndpoints({
 
 export const {
   useGetMyBillingQuery,
+  useGetBillingPlansQuery,
+  useSelectPlanMutation,
   useBillingCheckoutMutation,
   useSubmitBankTransferMutation,
   useGetPendingPaymentsQuery,

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { CreditCard, Building2, Info, Copy, CheckCircle2 } from 'lucide-react';
+import { CreditCard, Building2, Info, Copy, CheckCircle2, Sparkles, Check } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -10,12 +10,14 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
 import {
   Table, TableWrapper, TableHeader, TableBody, TableRow, TableHead, TableCell,
 } from '@/components/ui/table';
 import { formatCurrency, formatDate } from '@/lib/utils';
 import {
-  useGetMyBillingQuery, useBillingCheckoutMutation, useSubmitBankTransferMutation, type Gateway,
+  useGetMyBillingQuery, useGetBillingPlansQuery, useSelectPlanMutation,
+  useBillingCheckoutMutation, useSubmitBankTransferMutation, type Gateway,
 } from '@/store/api/billingApi';
 
 const statusBadge: Record<string, 'success' | 'warning' | 'danger' | 'neutral' | 'primary'> = {
@@ -28,6 +30,9 @@ const payBadge: Record<string, 'success' | 'warning' | 'danger' | 'neutral'> = {
 export function BillingView() {
   const { data, isLoading } = useGetMyBillingQuery();
   const b = data?.data;
+  const { data: plansRes } = useGetBillingPlansQuery();
+  const plans = plansRes?.data ?? [];
+  const [selectPlan, { isLoading: selectingPlan }] = useSelectPlanMutation();
   const [checkout, { isLoading: checkingOut }] = useBillingCheckoutMutation();
   const [submitTransfer, { isLoading: submitting }] = useSubmitBankTransferMutation();
   const [reference, setReference] = useState('');
@@ -67,6 +72,15 @@ export function BillingView() {
 
   const copy = (v: string) => { navigator.clipboard?.writeText(v); toast.success('Copied'); };
 
+  const choosePlan = async (planKey: string) => {
+    try {
+      await selectPlan({ planKey }).unwrap();
+      toast.success('Plan updated');
+    } catch (e: any) {
+      toast.error(e?.data?.error?.message || 'Could not update plan');
+    }
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader title="Billing & Subscription" description="Your Edvanta plan and payments." />
@@ -89,6 +103,58 @@ export function BillingView() {
           {b.lastPaymentAt && <p className="mt-2 text-xs text-muted-foreground">Last paid {formatDate(b.lastPaymentAt)}</p>}
         </Card>
       </div>
+
+      {/* Plan picker — the only way an institution can move onto a paid plan
+          and unlock the payment options below. */}
+      {plans.length > 0 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2"><Sparkles size={18} /> Plans</CardTitle>
+            <CardDescription>Choose the plan that fits your institution.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {plans.map((p) => {
+                const current = p.key === b.plan;
+                return (
+                  <div
+                    key={p.key}
+                    className={cn(
+                      'flex flex-col rounded-xl border p-4',
+                      current ? 'border-primary bg-primary-soft/40' : 'border-border'
+                    )}
+                  >
+                    <div className="flex items-center justify-between">
+                      <p className="font-semibold text-foreground">{p.name}</p>
+                      {current && <Badge variant="primary">Current</Badge>}
+                    </div>
+                    <p className="mt-2 text-2xl font-bold text-foreground">
+                      {p.price > 0 ? formatCurrency(p.price) : 'Free'}
+                      {p.price > 0 && <span className="text-sm font-normal text-muted-foreground">/mo</span>}
+                    </p>
+                    <ul className="mt-3 space-y-1.5 text-xs text-muted-foreground">
+                      <li className="flex items-center gap-1.5"><Check size={13} className="text-success" /> Up to {p.studentsLimit.toLocaleString('en-PK')} students</li>
+                      <li className="flex items-center gap-1.5"><Check size={13} className="text-success" /> {p.storageGB} GB storage</li>
+                      {p.features.map((f) => (
+                        <li key={f} className="flex items-center gap-1.5 capitalize"><Check size={13} className="text-success" /> {f}</li>
+                      ))}
+                    </ul>
+                    <Button
+                      className="mt-4"
+                      variant={current ? 'secondary' : 'primary'}
+                      disabled={current}
+                      loading={selectingPlan}
+                      onClick={() => choosePlan(p.key)}
+                    >
+                      {current ? 'Current plan' : 'Choose plan'}
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {!free && (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
