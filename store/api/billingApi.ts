@@ -63,8 +63,14 @@ export const billingApi = baseApi.injectEndpoints({
       query: (body) => ({ url: '/billing/plan', method: 'POST', body }),
       invalidatesTags: [{ type: 'Billing', id: 'ME' }],
     }),
-    billingCheckout: builder.mutation<ApiObject<{ settled: boolean; gateway: string; reference: string; redirectUrl?: string | null }>, { gateway: Gateway }>({
+    billingCheckout: builder.mutation<ApiObject<{ settled: boolean; gateway: string; reference: string; redirectUrl?: string | null; gatewayTxnId?: string | null }>, { gateway: Gateway }>({
       query: (body) => ({ url: '/billing/checkout', method: 'POST', body }),
+      invalidatesTags: [{ type: 'Billing', id: 'ME' }],
+    }),
+    // Reconciliation fallback for when the payer returns from a hosted
+    // checkout page before (or without) a webhook ever arriving.
+    verifyPayment: builder.mutation<ApiObject<{ status: 'success' | 'pending' | 'failed' }>, { gateway: Gateway; gatewayTxnId: string }>({
+      query: ({ gateway, gatewayTxnId }) => ({ url: `/billing/verify?gateway=${gateway}&gatewayTxnId=${encodeURIComponent(gatewayTxnId)}` }),
       invalidatesTags: [{ type: 'Billing', id: 'ME' }],
     }),
     submitBankTransfer: builder.mutation<ApiObject<{ ok: boolean }>, { reference: string; amount?: number }>({
@@ -93,6 +99,7 @@ export const {
   useGetBillingPlansQuery,
   useSelectPlanMutation,
   useBillingCheckoutMutation,
+  useVerifyPaymentMutation,
   useSubmitBankTransferMutation,
   useGetPendingPaymentsQuery,
   useConfirmPaymentMutation,

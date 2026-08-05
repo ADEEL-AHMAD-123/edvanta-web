@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import {
   CreditCard, Building2, Info, Copy, CheckCircle2, Sparkles, Check, ArrowLeft, AlertTriangle,
 } from 'lucide-react';
@@ -16,10 +17,11 @@ import { cn } from '@/lib/utils';
 import {
   Table, TableWrapper, TableHeader, TableBody, TableRow, TableHead, TableCell,
 } from '@/components/ui/table';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils';
 import {
   useGetMyBillingQuery, useGetBillingPlansQuery, useSelectPlanMutation,
-  useBillingCheckoutMutation, useSubmitBankTransferMutation, type Gateway, type MyBilling,
+  useBillingCheckoutMutation, useVerifyPaymentMutation, useSubmitBankTransferMutation,
+  type Gateway, type MyBilling,
 } from '@/store/api/billingApi';
 
 const statusBadge: Record<string, 'success' | 'warning' | 'danger' | 'neutral' | 'primary'> = {
@@ -38,17 +40,58 @@ const gatewayLabel: Record<Gateway, string> = {
 type Step = 'summary' | 'plans' | 'payment';
 
 export function BillingView() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { data, isLoading } = useGetMyBillingQuery();
   const b = data?.data;
   const { data: plansRes } = useGetBillingPlansQuery();
   const plans = plansRes?.data ?? [];
   const [selectPlan, { isLoading: selectingPlan }] = useSelectPlanMutation();
   const [checkout, { isLoading: checkingOut }] = useBillingCheckoutMutation();
+  const [verifyPayment] = useVerifyPaymentMutation();
   const [submitTransfer, { isLoading: submitting }] = useSubmitBankTransferMutation();
   const [reference, setReference] = useState('');
   const [step, setStep] = useState<Step>('summary');
+  const [reconciling, setReconciling] = useState(false);
+  const verifiedRef = useRef(false);
 
-  if (isLoading || !b) {
+  // Reconciliation fallback: Safepay appends ?tracker=... to our return URL
+  // when the payer comes back from the hosted checkout page. Don't rely on
+  // the webhook alone (it can be delayed, or never configured) — actively
+  // check the real status here so the admin isn't stuck looking at "pending"
+  // after a payment that actually succeeded.
+  useEffect(() => {
+    const tracker = searchParams.get('tracker');
+    if (!tracker || verifiedRef.current) return;
+    verifiedRef.current = true;
+    setReconciling(true);
+
+    (async () => {
+      // A couple of quick retries in case the gateway's own record hasn't
+      // caught up yet (a few seconds' lag is normal right after redirect).
+      for (let attempt = 0; attempt < 4; attempt++) {
+        try {
+          const res = await verifyPayment({ gateway: 'safepay', gatewayTxnId: tracker }).unwrap();
+          if (res.data.status === 'success') {
+            toast.success('Payment received — subscription renewed');
+            break;
+          }
+          if (res.data.status === 'failed') {
+            toast.error('That payment did not complete — please try again');
+            break;
+          }
+        } catch {
+          // keep retrying — the payment row may not be visible yet
+        }
+        if (attempt < 3) await new Promise((r) => setTimeout(r, 2000));
+      }
+      setReconciling(false);
+      router.replace(pathname);
+    })();
+  }, [searchParams, verifyPayment, router, pathname]);
+
+  if (isLoading || !b || reconciling) {
     return (
       <div className="space-y-6">
         <PageHeader title="Billing & Subscription" description="Your Edvanta plan and payments." />
@@ -189,7 +232,7 @@ function SummaryStep({
         <Card className="p-5">
           <p className="text-sm text-muted-foreground">Next renewal</p>
           <p className="mt-1 text-2xl font-bold text-foreground">{b.nextBillingAt ? formatDate(b.nextBillingAt) : '—'}</p>
-          {b.lastPaymentAt && <p className="mt-2 text-xs text-muted-foreground">Last paid {formatDate(b.lastPaymentAt)}</p>}
+          {b.lastPaymentAt && <p className="mt-2 text-xs text-muted-foreground">Last paid {formatDateTime(b.lastPaymentAt)}</p>}
         </Card>
       </div>
 
@@ -222,7 +265,7 @@ function SummaryStep({
                 <TableBody>
                   {b.payments.map((p, i) => (
                     <TableRow key={p.id ?? i}>
-                      <TableCell className="whitespace-nowrap text-muted-foreground">{formatDate(p.paidAt ?? p.createdAt)}</TableCell>
+                      <TableCell className="whitespace-nowrap text-muted-foreground">{formatDateTime(p.paidAt ?? p.createdAt)}</TableCell>
                       <TableCell className="font-medium text-foreground">{formatCurrency(p.amount)}</TableCell>
                       <TableCell className="capitalize text-muted-foreground">{p.gateway}</TableCell>
                       <TableCell className="max-w-[160px] truncate text-muted-foreground" title={p.reference ?? ''}>{p.reference ?? '—'}</TableCell>
