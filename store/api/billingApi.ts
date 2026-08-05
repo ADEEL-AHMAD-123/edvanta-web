@@ -85,11 +85,21 @@ export const billingApi = baseApi.injectEndpoints({
     }),
     confirmPayment: builder.mutation<ApiObject<unknown>, { institutionId: string; paymentId: string }>({
       query: ({ institutionId, paymentId }) => ({ url: `/billing/${institutionId}/payments/${paymentId}/confirm`, method: 'POST' }),
-      invalidatesTags: [{ type: 'Billing', id: 'PENDING' }],
+      // Also refresh the superadmin's own institution-detail and revenue
+      // views for this institution — confirming a payment changes both.
+      invalidatesTags: (_r, _e, { institutionId }) => [
+        { type: 'Billing', id: 'PENDING' },
+        { type: 'Institutions', id: institutionId },
+        { type: 'Institutions', id: 'OVERVIEW' },
+        { type: 'Institutions', id: 'REVENUE' },
+      ],
     }),
     rejectPayment: builder.mutation<ApiObject<unknown>, { institutionId: string; paymentId: string; reason?: string }>({
       query: ({ institutionId, paymentId, reason }) => ({ url: `/billing/${institutionId}/payments/${paymentId}/reject`, method: 'POST', body: { reason } }),
-      invalidatesTags: [{ type: 'Billing', id: 'PENDING' }],
+      invalidatesTags: (_r, _e, { institutionId }) => [
+        { type: 'Billing', id: 'PENDING' },
+        { type: 'Institutions', id: institutionId },
+      ],
     }),
   }),
 });

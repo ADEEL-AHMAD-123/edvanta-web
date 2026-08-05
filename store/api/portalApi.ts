@@ -64,8 +64,18 @@ interface ApiObject<T> { success: boolean; data: T; message: string }
 export const portalApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     // Student
-    myAttendance: builder.query<ApiObject<AttendanceData>, void>({ query: () => '/me/student/attendance' }),
-    myResults: builder.query<ApiObject<ResultItem[]>, void>({ query: () => '/me/student/results' }),
+    // (bare/id-less tags below act as wildcard subscriptions — they refetch
+    // whenever ANY admin/teacher mutation invalidates that tag type, e.g. a
+    // teacher marking attendance or saving results. These previously had no
+    // tags at all, so a student's own portal never refreshed on its own.)
+    myAttendance: builder.query<ApiObject<AttendanceData>, void>({
+      query: () => '/me/student/attendance',
+      providesTags: ['Attendance'],
+    }),
+    myResults: builder.query<ApiObject<ResultItem[]>, void>({
+      query: () => '/me/student/results',
+      providesTags: ['Results'],
+    }),
     myFees: builder.query<ApiObject<FeeItem[]>, void>({
       query: () => '/me/student/fees',
       providesTags: [{ type: 'Fees', id: 'MINE' }],
@@ -83,12 +93,27 @@ export const portalApi = baseApi.injectEndpoints({
       invalidatesTags: [{ type: 'Subjects', id: 'MINE' }],
     }),
     // Parent
-    myChildren: builder.query<ApiObject<ChildSummary[]>, void>({ query: () => '/me/children' }),
-    childAttendance: builder.query<ApiObject<AttendanceData>, string>({ query: (id) => `/me/children/${id}/attendance` }),
-    childResults: builder.query<ApiObject<ResultItem[]>, string>({ query: (id) => `/me/children/${id}/results` }),
-    childFees: builder.query<ApiObject<FeeItem[]>, string>({ query: (id) => `/me/children/${id}/fees` }),
+    myChildren: builder.query<ApiObject<ChildSummary[]>, void>({
+      query: () => '/me/children',
+      providesTags: ['Students', 'Attendance', 'Fees'],
+    }),
+    childAttendance: builder.query<ApiObject<AttendanceData>, string>({
+      query: (id) => `/me/children/${id}/attendance`,
+      providesTags: ['Attendance'],
+    }),
+    childResults: builder.query<ApiObject<ResultItem[]>, string>({
+      query: (id) => `/me/children/${id}/results`,
+      providesTags: ['Results'],
+    }),
+    childFees: builder.query<ApiObject<FeeItem[]>, string>({
+      query: (id) => `/me/children/${id}/fees`,
+      providesTags: ['Fees'],
+    }),
     // Teacher
-    myClasses: builder.query<ApiObject<TeacherClass[]>, void>({ query: () => '/me/teacher/classes' }),
+    myClasses: builder.query<ApiObject<TeacherClass[]>, void>({
+      query: () => '/me/teacher/classes',
+      providesTags: ['Classes'],
+    }),
   }),
 });
 

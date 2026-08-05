@@ -15,22 +15,40 @@ const baseQuery = fetchBaseQuery({
 });
 
 // ─── Auto-refresh on 401 ──────────────────────────────────────────────────────
+// The backend rotates the refresh token on every use and rejects reuse of an
+// already-consumed one (session-hijack protection). That means if several
+// requests 401 at the same moment (e.g. a dashboard firing 5 queries at
+// once), each independently calling /auth/refresh would race: only the first
+// succeeds, and every other concurrent refresh gets rejected as token reuse
+// — logging the user out even though their session was perfectly valid.
+// Share a single in-flight refresh promise across all callers instead.
+let refreshPromise: Promise<string | null> | null = null;
+
+async function getRefreshedToken(api: any, extraOptions: any): Promise<string | null> {
+  if (!refreshPromise) {
+    refreshPromise = (async () => {
+      const refreshResult = await baseQuery({ url: '/auth/refresh', method: 'POST' }, api, extraOptions);
+      if (refreshResult.data) {
+        const token = (refreshResult.data as any).data.accessToken as string;
+        api.dispatch(updateAccessToken(token));
+        return token;
+      }
+      return null;
+    })().finally(() => {
+      refreshPromise = null;
+    });
+  }
+  return refreshPromise;
+}
+
 const baseQueryWithReauth: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQueryError> =
   async (args, api, extraOptions) => {
     let result = await baseQuery(args, api, extraOptions);
 
     if (result.error?.status === 401) {
-      // Try to refresh
-      const refreshResult = await baseQuery(
-        { url: '/auth/refresh', method: 'POST' },
-        api,
-        extraOptions
-      );
-
-      if (refreshResult.data) {
-        const data = refreshResult.data as any;
-        api.dispatch(updateAccessToken(data.data.accessToken));
-        // Retry original query
+      const token = await getRefreshedToken(api, extraOptions);
+      if (token) {
+        // Retry original query now that every caller shares the new token.
         result = await baseQuery(args, api, extraOptions);
       } else {
         // Refresh failed — logout
