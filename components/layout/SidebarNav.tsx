@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { useAppSelector } from '@/store/hooks';
 import { cn, getInitials } from '@/lib/utils';
 import { NAV_ITEMS } from './nav-items';
@@ -11,9 +12,12 @@ interface SidebarNavProps {
   collapsed?: boolean;
   /** Called after a nav link is clicked (used to close the mobile drawer). */
   onNavigate?: () => void;
+  /** Desktop collapse toggle — omitted in the mobile drawer, which has no
+   *  collapsed state of its own. */
+  onToggleCollapsed?: () => void;
 }
 
-export function SidebarNav({ collapsed = false, onNavigate }: SidebarNavProps) {
+export function SidebarNav({ collapsed = false, onNavigate, onToggleCollapsed }: SidebarNavProps) {
   const pathname = usePathname();
   const { user } = useAppSelector((state) => state.auth);
 
@@ -87,6 +91,23 @@ export function SidebarNav({ collapsed = false, onNavigate }: SidebarNavProps) {
             )}
           </div>
         </div>
+      )}
+
+      {/* Collapse toggle — a dedicated footer row instead of a floating
+          button, so it never overlaps content and is easy to find. */}
+      {onToggleCollapsed && (
+        <button
+          onClick={onToggleCollapsed}
+          aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          className={cn(
+            'flex shrink-0 items-center gap-3 border-t border-sidebar-border px-3 py-3 text-sm font-medium text-sidebar-muted transition-colors hover:bg-sidebar-accent hover:text-sidebar-foreground',
+            collapsed && 'justify-center px-0'
+          )}
+        >
+          {collapsed ? <ChevronsRight size={18} className="shrink-0" /> : <ChevronsLeft size={18} className="shrink-0" />}
+          {!collapsed && <span className="truncate">Collapse</span>}
+        </button>
       )}
     </div>
   );

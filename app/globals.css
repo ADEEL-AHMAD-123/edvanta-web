@@ -331,19 +331,28 @@
 }
 
 /* ── Scrollbar (token-driven) ──────────────────────────────────── */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--muted-foreground) / 0.35) transparent;
+}
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
 }
 ::-webkit-scrollbar-track {
-  background: hsl(var(--muted));
+  /* Transparent so it blends into whatever panel it's on, instead of a
+     flat whitish bar that clashes with the sidebar/card backgrounds. */
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
   background: hsl(var(--muted-foreground) / 0.35);
   border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
 }
 ::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--muted-foreground) / 0.55);
+  background-clip: padding-box;
 }
 
 /* ════════════════════════════════════════════════════════════════
