@@ -133,8 +133,8 @@ export function BillingView() {
     );
   }
 
-  const free = b.monthlyAmount <= 0;
-  const needsPayment = !free && b.status !== 'active';
+  const free = b.planPrice <= 0;
+  const needsPayment = !free && b.status !== 'active' && !b.pendingPlan;
   const liveGateways = (Object.keys(gatewayLabel) as Gateway[]).filter((g) => b.online[g]);
 
   const payOnline = async (gateway: Gateway) => {
@@ -273,19 +273,25 @@ function SummaryStep({
 }) {
   return (
     <div className="space-y-6">
-      {b.pendingPlan && (
-        <div className="flex items-start gap-2.5 rounded-xl border border-primary/30 bg-primary-soft/40 px-4 py-3 text-sm text-primary">
+      {/* Exactly one banner can ever show — pending plan change takes
+          priority over an outstanding renewal, since it's the more specific
+          and more recent thing needing attention. Never show both at once,
+          and never let their numbers appear anywhere near the plan card
+          below (that's what caused the "Enterprise costs Rs 6,000?"
+          confusion). */}
+      {b.pendingPlan ? (
+        <div className="flex flex-col gap-3 rounded-xl border border-primary/30 bg-primary-soft/40 px-4 py-3.5 text-sm text-primary sm:flex-row sm:items-start">
           <Info size={17} className="mt-0.5 shrink-0" />
           <span className="flex-1">
-            You've selected the <strong className="capitalize">{b.pendingPlan}</strong> plan
-            ({formatCurrency(b.amountDue)}/{b.billingCycle === 'annual' ? 'yr' : 'mo'}) — it won't
-            take effect until payment is completed. You're still on <strong className="capitalize">{b.plan}</strong> for now.
+            You've selected the <strong className="capitalize">{b.pendingPlan}</strong> plan —{' '}
+            <strong>{formatCurrency(b.amountDue)}/{b.billingCycle === 'annual' ? 'yr' : 'mo'}</strong>.
+            It won't take effect until payment is completed. You're still on{' '}
+            <strong className="capitalize">{b.plan}</strong> for now, and nothing has been charged.
           </span>
           <Button size="sm" onClick={onPay}>Complete payment</Button>
         </div>
-      )}
-      {needsPayment && !b.pendingPlan && (
-        <div className="flex items-start gap-2.5 rounded-xl border border-warning/30 bg-warning-soft px-4 py-3 text-sm text-warning">
+      ) : needsPayment ? (
+        <div className="flex flex-col gap-3 rounded-xl border border-warning/30 bg-warning-soft px-4 py-3.5 text-sm text-warning sm:flex-row sm:items-start">
           <AlertTriangle size={17} className="mt-0.5 shrink-0" />
           <span className="flex-1">
             Your <strong className="capitalize">{b.plan}</strong> plan payment of{' '}
@@ -293,32 +299,40 @@ function SummaryStep({
           </span>
           <Button size="sm" onClick={onPay}>Pay now</Button>
         </div>
-      )}
+      ) : null}
 
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Card className="p-5">
           <p className="flex items-center gap-1.5 text-sm text-muted-foreground"><Wallet size={14} /> Current plan</p>
-          <p className="mt-1 text-2xl font-bold capitalize text-foreground">{b.plan}</p>
+          <div className="mt-1 flex items-baseline gap-2">
+            <p className="text-2xl font-bold capitalize text-foreground">{b.plan}</p>
+            {!free && <p className="text-sm text-muted-foreground">{formatCurrency(b.planPrice)}/{b.billingCycle === 'annual' ? 'yr' : 'mo'}</p>}
+          </div>
           <Badge variant={statusBadge[b.status] ?? 'neutral'} className="mt-2 capitalize">{b.status.replace('_', ' ')}</Badge>
         </Card>
         <Card className="p-5">
-          <p className="flex items-center gap-1.5 text-sm text-muted-foreground"><CreditCard size={14} /> Amount due / cycle</p>
-          <p className="mt-1 text-2xl font-bold text-foreground">{free ? 'Free' : formatCurrency(b.amountDue)}</p>
-          <p className="mt-2 text-xs text-muted-foreground capitalize">{b.billingCycle}</p>
-        </Card>
-        <Card className="p-5">
           <p className="flex items-center gap-1.5 text-sm text-muted-foreground"><Clock size={14} /> Next renewal</p>
-          <p className="mt-1 text-2xl font-bold text-foreground">{b.nextBillingAt ? formatDate(b.nextBillingAt) : '—'}</p>
-          {b.lastPaymentAt && <p className="mt-2 text-xs text-muted-foreground">Last paid {formatDateTime(b.lastPaymentAt)}</p>}
+          <p className="mt-1 text-2xl font-bold text-foreground">{free ? '—' : b.nextBillingAt ? formatDate(b.nextBillingAt) : '—'}</p>
+          <p className="mt-2 text-xs text-muted-foreground">
+            {free ? 'Free plan — nothing to renew' : b.lastPaymentAt ? `Last paid ${formatDateTime(b.lastPaymentAt)}` : 'No payments yet'}
+          </p>
         </Card>
       </div>
 
+      {/* One clear primary action depending on state, never several
+          competing buttons that all sort of do the same thing. */}
       <div className="flex flex-wrap gap-2">
-        <Button variant={free ? 'primary' : 'secondary'} onClick={onChangePlan}>
-          <Sparkles size={16} /> {free ? 'Choose a plan' : 'Change plan'}
-        </Button>
+        {free && (
+          <Button onClick={onChangePlan}><Sparkles size={16} /> Choose a paid plan</Button>
+        )}
+        {!free && !b.pendingPlan && (
+          <Button variant="secondary" onClick={onChangePlan}><Sparkles size={16} /> Change plan</Button>
+        )}
+        {!free && b.pendingPlan && (
+          <Button variant="secondary" onClick={onChangePlan}><Sparkles size={16} /> Choose a different plan</Button>
+        )}
         {!free && !needsPayment && !b.pendingPlan && (
-          <Button variant="secondary" onClick={onPay}><CreditCard size={16} /> Make a payment</Button>
+          <Button variant="ghost" onClick={onPay}><CreditCard size={16} /> Renew early</Button>
         )}
       </div>
 

@@ -15,16 +15,21 @@ export interface BillingPayment {
 
 export interface MyBilling {
   plan: string;
+  // What the currently-active plan actually costs — always reflects `plan`,
+  // never a pending unpaid selection. Use this (not `amountDue`) for any
+  // "your plan costs X" display.
+  planPrice: number;
   // Set only when a different plan has been selected but not yet paid for —
   // `plan` always reflects what's actually active/entitled right now.
   pendingPlan: string | null;
   status: string;
-  monthlyAmount: number;
   currency: string;
   billingCycle: string;
   nextBillingAt: string | null;
   lastPaymentAt: string | null;
   trialEndsAt: string | null;
+  // What's actually owed right now — equals planPrice normally, but is the
+  // *pending* plan's price if a change is awaiting payment.
   amountDue: number;
   payments: BillingPayment[];
   online: { safepay: boolean; jazzcash: boolean; easypaisa: boolean; live: boolean };
