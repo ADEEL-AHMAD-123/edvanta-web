@@ -22,8 +22,14 @@ import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils';
 import {
   useGetMyBillingQuery, useGetBillingPlansQuery, useSelectPlanMutation,
   useBillingCheckoutMutation, useVerifyPaymentMutation, useSubmitBankTransferMutation,
-  type Gateway, type MyBilling,
+  useLazyGetMyPaymentsQuery,
+  type Gateway, type MyBilling, type BillingPayment,
 } from '@/store/api/billingApi';
+
+// `myBilling()` already returns page 1 of payment history at this page
+// size — "Load more" fetches subsequent pages at the same size so they
+// line up with no gap or overlap.
+const PAYMENTS_PAGE_SIZE = 10;
 
 const statusBadge: Record<string, 'success' | 'warning' | 'danger' | 'neutral' | 'primary'> = {
   active: 'success', trial: 'primary', past_due: 'warning', suspended: 'danger', cancelled: 'neutral', expired: 'neutral',
@@ -65,6 +71,17 @@ export function BillingView() {
   const [step, setStep] = useState<Step>('summary');
   const [reconciling, setReconciling] = useState(false);
   const verifiedRef = useRef(false);
+
+  // "Load more" payment history — page 1 already came inline with
+  // getMyBilling; this appends subsequent pages at the same page size.
+  const [extraPayments, setExtraPayments] = useState<BillingPayment[]>([]);
+  const [paymentsPage, setPaymentsPage] = useState(2);
+  const [fetchPayments, { isFetching: loadingMorePayments }] = useLazyGetMyPaymentsQuery();
+  const loadMorePayments = async () => {
+    const res = await fetchPayments({ page: paymentsPage, limit: PAYMENTS_PAGE_SIZE }).unwrap();
+    setExtraPayments((prev) => [...prev, ...res.data.items]);
+    setPaymentsPage((p) => p + 1);
+  };
 
   // Reconciliation fallback: Safepay appends ?tracker=... to our return URL
   // when the payer comes back from the hosted checkout page. Don't rely on
@@ -135,6 +152,10 @@ export function BillingView() {
 
   const free = b.planPrice <= 0;
   const needsPayment = !free && b.status !== 'active' && !b.pendingPlan;
+  // Informational only — nothing on the backend enforces this, so it's
+  // purely a nudge to pick a paid plan once the welcome trial window has
+  // passed while still on the free plan. Never blocks anything.
+  const trialExpired = free && !!b.trialEndsAt && new Date(b.trialEndsAt) < new Date();
   const liveGateways = (Object.keys(gatewayLabel) as Gateway[]).filter((g) => b.online[g]);
 
   const payOnline = async (gateway: Gateway) => {
@@ -174,13 +195,27 @@ export function BillingView() {
 
   const copy = (v: string) => { navigator.clipboard?.writeText(v); toast.success('Copied'); };
 
-  const choosePlan = async (planKey: string, price: number) => {
+  const choosePlan = async (planKey: string) => {
     try {
-      await selectPlan({ planKey }).unwrap();
-      toast.success(price > 0 ? 'Plan selected — pay to activate it' : 'Plan updated');
-      // A paid plan needs payment next — walk the admin straight there
-      // instead of dropping them back on a page with nothing to do.
-      setStep(price > 0 ? 'payment' : 'summary');
+      const res = await selectPlan({ planKey }).unwrap();
+      const { effective, overStudentLimit } = res.data;
+      if (effective === 'pending_payment') {
+        toast.success('Plan selected — pay to activate it');
+        setStep('payment'); // walk the admin straight to payment
+      } else if (effective === 'next_renewal') {
+        if (overStudentLimit) {
+          toast(
+            `Scheduled — but you currently have ${overStudentLimit} more active student${overStudentLimit === 1 ? '' : 's'} than this plan allows. You won't be able to add new students once it takes effect until you're back under the limit.`,
+            { icon: '⚠️', duration: 7000 }
+          );
+        } else {
+          toast.success('Got it — this takes effect at your next renewal, no payment needed now');
+        }
+        setStep('summary');
+      } else {
+        toast.success('Plan updated');
+        setStep('summary');
+      }
     } catch (e: any) {
       toast.error(e?.data?.error?.message || 'Could not update plan');
     }
@@ -196,8 +231,13 @@ export function BillingView() {
           b={b}
           free={free}
           needsPayment={needsPayment}
+          trialExpired={trialExpired}
           onChangePlan={() => setStep('plans')}
           onPay={() => setStep('payment')}
+          onCancelScheduled={() => choosePlan(b.plan)}
+          extraPayments={extraPayments}
+          onLoadMorePayments={loadMorePayments}
+          loadingMorePayments={loadingMorePayments}
         />
       )}
 
@@ -206,6 +246,7 @@ export function BillingView() {
           plans={plans}
           currentPlan={b.plan}
           pendingPlan={b.pendingPlan}
+          scheduledPlan={b.scheduledPlan}
           selecting={selectingPlan}
           onBack={() => setStep('summary')}
           onChoose={choosePlan}
@@ -263,14 +304,22 @@ function Stepper({ step }: { step: Step }) {
 
 /* ── Step 1: summary — the landing view, with clear next actions ────────── */
 function SummaryStep({
-  b, free, needsPayment, onChangePlan, onPay,
+  b, free, needsPayment, trialExpired, onChangePlan, onPay, onCancelScheduled,
+  extraPayments, onLoadMorePayments, loadingMorePayments,
 }: {
   b: MyBilling;
   free: boolean;
   needsPayment: boolean;
+  trialExpired: boolean;
   onChangePlan: () => void;
   onPay: () => void;
+  onCancelScheduled: () => void;
+  extraPayments: BillingPayment[];
+  onLoadMorePayments: () => void;
+  loadingMorePayments: boolean;
 }) {
+  const allPayments = [...b.payments, ...extraPayments];
+  const hasMorePayments = allPayments.length < b.paymentsTotal;
   return (
     <div className="space-y-6">
       {/* Exactly one banner can ever show — pending plan change takes
@@ -290,6 +339,16 @@ function SummaryStep({
           </span>
           <Button size="sm" onClick={onPay}>Complete payment</Button>
         </div>
+      ) : b.scheduledPlan ? (
+        <div className="flex items-start gap-2.5 rounded-xl border border-border bg-muted/50 px-4 py-3.5 text-sm text-foreground">
+          <Info size={17} className="mt-0.5 shrink-0 text-muted-foreground" />
+          <span className="flex-1">
+            You're moving to the <strong className="capitalize">{b.scheduledPlan}</strong> plan
+            {b.nextBillingAt && <> on <strong>{formatDate(b.nextBillingAt)}</strong></>} — no payment
+            needed, you'll keep <strong className="capitalize">{b.plan}</strong> until then.
+          </span>
+          <Button size="sm" variant="ghost" onClick={onCancelScheduled}>Cancel</Button>
+        </div>
       ) : needsPayment ? (
         <div className="flex flex-col gap-3 rounded-xl border border-warning/30 bg-warning-soft px-4 py-3.5 text-sm text-warning sm:flex-row sm:items-start">
           <AlertTriangle size={17} className="mt-0.5 shrink-0" />
@@ -298,6 +357,15 @@ function SummaryStep({
             <strong>{formatCurrency(b.amountDue)}</strong> is outstanding.
           </span>
           <Button size="sm" onClick={onPay}>Pay now</Button>
+        </div>
+      ) : trialExpired ? (
+        <div className="flex flex-col gap-3 rounded-xl border border-border bg-muted/50 px-4 py-3.5 text-sm text-foreground sm:flex-row sm:items-start">
+          <Info size={17} className="mt-0.5 shrink-0 text-muted-foreground" />
+          <span className="flex-1">
+            Your trial period has ended — you're still on the <strong className="capitalize">{b.plan}</strong> plan
+            with no changes to your account. Take a look at paid plans whenever you're ready to unlock more.
+          </span>
+          <Button size="sm" variant="secondary" onClick={onChangePlan}>View plans</Button>
         </div>
       ) : null}
 
@@ -342,43 +410,59 @@ function SummaryStep({
           <CardDescription>Every payment attempt for your subscription, most recent first.</CardDescription>
         </CardHeader>
         <CardContent>
-          {b.payments.length === 0 ? (
+          {allPayments.length === 0 ? (
             <div className="flex flex-col items-center gap-2 py-8 text-center">
               <Wallet size={22} className="text-muted-foreground" />
               <p className="text-sm text-muted-foreground">No payments yet.</p>
             </div>
           ) : (
-            <TableWrapper>
-              <Table>
-                <TableHeader>
-                  <TableRow className="hover:bg-transparent">
-                    <TableHead>Date & time</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Method</TableHead>
-                    <TableHead>Reference</TableHead>
-                    <TableHead>Status</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {b.payments.map((p, i) => {
-                    const Icon = payIcon[p.status] ?? Clock;
-                    return (
-                      <TableRow key={p.id ?? i}>
-                        <TableCell className="whitespace-nowrap text-muted-foreground">{formatDateTime(p.paidAt ?? p.createdAt)}</TableCell>
-                        <TableCell className="font-medium text-foreground">{formatCurrency(p.amount)}</TableCell>
-                        <TableCell className="capitalize text-muted-foreground">{p.gateway}</TableCell>
-                        <TableCell className="max-w-[160px] truncate text-muted-foreground" title={p.reference ?? ''}>{p.reference ?? '—'}</TableCell>
-                        <TableCell>
-                          <Badge variant={payBadge[p.status]} className="capitalize">
-                            <Icon size={11} /> {p.status}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </TableWrapper>
+            <>
+              <TableWrapper>
+                <Table>
+                  <TableHeader>
+                    <TableRow className="hover:bg-transparent">
+                      <TableHead>Date & time</TableHead>
+                      <TableHead>Amount</TableHead>
+                      <TableHead>Method</TableHead>
+                      <TableHead>Reference</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {allPayments.map((p, i) => {
+                      const Icon = payIcon[p.status] ?? Clock;
+                      return (
+                        <TableRow key={p.id ?? i}>
+                          <TableCell className="whitespace-nowrap text-muted-foreground">{formatDateTime(p.paidAt ?? p.createdAt)}</TableCell>
+                          <TableCell className="font-medium text-foreground">{formatCurrency(p.amount)}</TableCell>
+                          <TableCell className="capitalize text-muted-foreground">{p.gateway}</TableCell>
+                          <TableCell className="max-w-[160px] truncate text-muted-foreground" title={p.reference ?? ''}>{p.reference ?? '—'}</TableCell>
+                          <TableCell>
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <Badge variant={payBadge[p.status]} className="capitalize">
+                                <Icon size={11} /> {p.status}
+                              </Badge>
+                              {p.disputed && (
+                                <Badge variant="danger" title="A chargeback was reported for this payment — under review">
+                                  <AlertTriangle size={11} /> Disputed
+                                </Badge>
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </TableWrapper>
+              {hasMorePayments && (
+                <div className="flex justify-center pt-4">
+                  <Button size="sm" variant="secondary" loading={loadingMorePayments} onClick={onLoadMorePayments}>
+                    Load more ({allPayments.length} of {b.paymentsTotal})
+                  </Button>
+                </div>
+              )}
+            </>
           )}
         </CardContent>
       </Card>
@@ -388,14 +472,15 @@ function SummaryStep({
 
 /* ── Step 2: plans — shown only when the admin asks to view/change plans ── */
 function PlansStep({
-  plans, currentPlan, pendingPlan, selecting, onBack, onChoose,
+  plans, currentPlan, pendingPlan, scheduledPlan, selecting, onBack, onChoose,
 }: {
   plans: { key: string; name: string; price: number; studentsLimit: number; storageGB: number; features: string[] }[];
   currentPlan: string;
   pendingPlan: string | null;
+  scheduledPlan: string | null;
   selecting: boolean;
   onBack: () => void;
-  onChoose: (planKey: string, price: number) => void;
+  onChoose: (planKey: string) => void;
 }) {
   return (
     <Card>
@@ -418,18 +503,23 @@ function PlansStep({
             {plans.map((p) => {
               const current = p.key === currentPlan;
               const pending = p.key === pendingPlan;
+              const scheduled = p.key === scheduledPlan;
               return (
                 <div
                   key={p.key}
                   className={cn(
                     'flex flex-col rounded-xl border p-4 transition-colors',
-                    current ? 'border-primary bg-primary-soft/40' : pending ? 'border-warning bg-warning-soft/40' : 'border-border hover:border-primary/40'
+                    current ? 'border-primary bg-primary-soft/40'
+                      : pending ? 'border-warning bg-warning-soft/40'
+                      : scheduled ? 'border-border bg-muted/50'
+                      : 'border-border hover:border-primary/40'
                   )}
                 >
                   <div className="flex items-center justify-between gap-2">
                     <p className="font-semibold text-foreground">{p.name}</p>
                     {current && <Badge variant="primary"><ShieldCheck size={11} /> Current</Badge>}
                     {pending && <Badge variant="warning"><Clock size={11} /> Pending</Badge>}
+                    {scheduled && <Badge variant="neutral"><Clock size={11} /> Scheduled</Badge>}
                   </div>
                   <p className="mt-2 text-2xl font-bold text-foreground">
                     {p.price > 0 ? formatCurrency(p.price) : 'Free'}
@@ -444,12 +534,12 @@ function PlansStep({
                   </ul>
                   <Button
                     className="mt-4"
-                    variant={current ? 'secondary' : 'primary'}
+                    variant={current || pending || scheduled ? 'secondary' : 'primary'}
                     disabled={current}
                     loading={selecting}
-                    onClick={() => onChoose(p.key, p.price)}
+                    onClick={() => onChoose(p.key)}
                   >
-                    {current ? 'Current plan' : pending ? 'Selected — pay to activate' : 'Choose plan'}
+                    {current ? 'Current plan' : pending ? 'Selected — pay to activate' : scheduled ? 'Scheduled — choose again' : 'Choose plan'}
                   </Button>
                 </div>
               );

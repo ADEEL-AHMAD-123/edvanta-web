@@ -11,6 +11,9 @@ export interface BillingPayment {
   status: 'pending' | 'success' | 'failed' | 'refunded';
   paidAt: string | null;
   createdAt: string;
+  // A chargeback was reported for this payment — separate from `status`,
+  // since a dispute doesn't automatically mean the money was reversed.
+  disputed?: boolean;
 }
 
 export interface MyBilling {
@@ -22,6 +25,9 @@ export interface MyBilling {
   // Set only when a different plan has been selected but not yet paid for —
   // `plan` always reflects what's actually active/entitled right now.
   pendingPlan: string | null;
+  // Set only when a downgrade (or lateral move) is scheduled to take effect
+  // for free at the next renewal — mutually exclusive with `pendingPlan`.
+  scheduledPlan: string | null;
   status: string;
   currency: string;
   billingCycle: string;
@@ -31,7 +37,10 @@ export interface MyBilling {
   // What's actually owed right now — equals planPrice normally, but is the
   // *pending* plan's price if a change is awaiting payment.
   amountDue: number;
+  // Most recent page only — see `paymentsTotal` and `useGetMyPaymentsQuery`
+  // for "load more" pagination over the full history.
   payments: BillingPayment[];
+  paymentsTotal: number;
   online: { safepay: boolean; jazzcash: boolean; easypaisa: boolean; live: boolean };
   bank: { name: string | null; accountTitle: string | null; iban: string | null };
 }
@@ -56,6 +65,20 @@ export interface PendingPayment {
   createdAt: string;
 }
 
+export interface DisputedPayment {
+  institutionId: string;
+  institutionName: string;
+  paymentId: string;
+  amount: number;
+  gateway: string;
+  reference: string | null;
+  status: string;
+  disputeNote: string | null;
+  resolved: boolean;
+  resolvedAt: string | null;
+  createdAt: string;
+}
+
 interface ApiObject<T> { success: boolean; data: T; message: string }
 
 export const billingApi = baseApi.injectEndpoints({
@@ -67,7 +90,21 @@ export const billingApi = baseApi.injectEndpoints({
     getBillingPlans: builder.query<ApiObject<BillingPlan[]>, void>({
       query: () => '/billing/plans',
     }),
-    selectPlan: builder.mutation<ApiObject<{ plan: string; monthlyAmount: number }>, { planKey: string }>({
+    getMyPayments: builder.query<ApiObject<{ items: BillingPayment[]; total: number; page: number; limit: number }>, { page: number; limit?: number }>({
+      query: ({ page, limit = 20 }) => `/billing/payments?page=${page}&limit=${limit}`,
+    }),
+    selectPlan: builder.mutation<
+      ApiObject<{
+        plan: string;
+        monthlyAmount: number;
+        effective: 'now' | 'next_renewal' | 'pending_payment';
+        effectiveAt?: string | null;
+        // Set (non-blocking) when the target plan's student limit is lower
+        // than the number of active students already enrolled.
+        overStudentLimit?: number | null;
+      }>,
+      { planKey: string }
+    >({
       query: (body) => ({ url: '/billing/plan', method: 'POST', body }),
       invalidatesTags: [{ type: 'Billing', id: 'ME' }],
     }),
@@ -90,6 +127,14 @@ export const billingApi = baseApi.injectEndpoints({
     getPendingPayments: builder.query<ApiObject<PendingPayment[]>, void>({
       query: () => '/billing/pending',
       providesTags: [{ type: 'Billing', id: 'PENDING' }],
+    }),
+    getDisputedPayments: builder.query<ApiObject<DisputedPayment[]>, void>({
+      query: () => '/billing/disputed',
+      providesTags: [{ type: 'Billing', id: 'DISPUTED' }],
+    }),
+    resolveDispute: builder.mutation<ApiObject<{ ok: boolean }>, { institutionId: string; paymentId: string }>({
+      query: ({ institutionId, paymentId }) => ({ url: `/billing/${institutionId}/payments/${paymentId}/resolve-dispute`, method: 'POST' }),
+      invalidatesTags: [{ type: 'Billing', id: 'DISPUTED' }],
     }),
     confirmPayment: builder.mutation<ApiObject<unknown>, { institutionId: string; paymentId: string }>({
       query: ({ institutionId, paymentId }) => ({ url: `/billing/${institutionId}/payments/${paymentId}/confirm`, method: 'POST' }),
@@ -115,11 +160,14 @@ export const billingApi = baseApi.injectEndpoints({
 export const {
   useGetMyBillingQuery,
   useGetBillingPlansQuery,
+  useLazyGetMyPaymentsQuery,
   useSelectPlanMutation,
   useBillingCheckoutMutation,
   useVerifyPaymentMutation,
   useSubmitBankTransferMutation,
   useGetPendingPaymentsQuery,
+  useGetDisputedPaymentsQuery,
+  useResolveDisputeMutation,
   useConfirmPaymentMutation,
   useRejectPaymentMutation,
 } = billingApi;
