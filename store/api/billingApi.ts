@@ -15,6 +15,9 @@ export interface BillingPayment {
 
 export interface MyBilling {
   plan: string;
+  // Set only when a different plan has been selected but not yet paid for —
+  // `plan` always reflects what's actually active/entitled right now.
+  pendingPlan: string | null;
   status: string;
   monthlyAmount: number;
   currency: string;
@@ -69,7 +72,7 @@ export const billingApi = baseApi.injectEndpoints({
     }),
     // Reconciliation fallback for when the payer returns from a hosted
     // checkout page before (or without) a webhook ever arriving.
-    verifyPayment: builder.mutation<ApiObject<{ status: 'success' | 'pending' | 'failed' }>, { gateway: Gateway; gatewayTxnId: string }>({
+    verifyPayment: builder.mutation<ApiObject<{ status: 'success' | 'pending' | 'failed' | 'refunded' }>, { gateway: Gateway; gatewayTxnId: string }>({
       query: ({ gateway, gatewayTxnId }) => ({ url: `/billing/verify?gateway=${gateway}&gatewayTxnId=${encodeURIComponent(gatewayTxnId)}` }),
       invalidatesTags: [{ type: 'Billing', id: 'ME' }],
     }),

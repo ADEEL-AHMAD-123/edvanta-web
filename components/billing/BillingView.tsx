@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import {
   CreditCard, Building2, Info, Copy, CheckCircle2, Sparkles, Check, ArrowLeft, AlertTriangle,
+  Wallet, Clock, ShieldCheck, RefreshCw, XCircle, ChevronRight,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { PageHeader } from '@/components/ui/page-header';
@@ -30,6 +31,9 @@ const statusBadge: Record<string, 'success' | 'warning' | 'danger' | 'neutral' |
 const payBadge: Record<string, 'success' | 'warning' | 'danger' | 'neutral'> = {
   success: 'success', pending: 'warning', failed: 'danger', refunded: 'neutral',
 };
+const payIcon: Record<string, React.ElementType> = {
+  success: CheckCircle2, pending: Clock, failed: XCircle, refunded: RefreshCw,
+};
 
 const gatewayLabel: Record<Gateway, string> = {
   safepay: 'Pay with Safepay',
@@ -39,11 +43,17 @@ const gatewayLabel: Record<Gateway, string> = {
 
 type Step = 'summary' | 'plans' | 'payment';
 
+const STEPS: { key: Step; label: string }[] = [
+  { key: 'summary', label: 'Overview' },
+  { key: 'plans', label: 'Choose plan' },
+  { key: 'payment', label: 'Pay' },
+];
+
 export function BillingView() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
-  const { data, isLoading } = useGetMyBillingQuery();
+  const { data, isLoading, isError, refetch } = useGetMyBillingQuery();
   const b = data?.data;
   const { data: plansRes } = useGetBillingPlansQuery();
   const plans = plansRes?.data ?? [];
@@ -74,11 +84,15 @@ export function BillingView() {
         try {
           const res = await verifyPayment({ gateway: 'safepay', gatewayTxnId: tracker }).unwrap();
           if (res.data.status === 'success') {
-            toast.success('Payment received — subscription renewed');
+            toast.success('Payment received — subscription updated');
             break;
           }
           if (res.data.status === 'failed') {
             toast.error('That payment did not complete — please try again');
+            break;
+          }
+          if (res.data.status === 'refunded') {
+            toast('This payment was refunded', { icon: 'ℹ️' });
             break;
           }
         } catch {
@@ -91,11 +105,30 @@ export function BillingView() {
     })();
   }, [searchParams, verifyPayment, router, pathname]);
 
-  if (isLoading || !b || reconciling) {
+  if (isLoading || reconciling) {
     return (
       <div className="space-y-6">
         <PageHeader title="Billing & Subscription" description="Your Edvanta plan and payments." />
+        {reconciling && (
+          <div className="flex items-center gap-2 rounded-xl border border-primary/30 bg-primary-soft/40 px-4 py-3 text-sm text-primary">
+            <RefreshCw size={16} className="animate-spin" /> Confirming your payment with the gateway…
+          </div>
+        )}
         <Card className="p-5"><Skeleton className="h-48 w-full" /></Card>
+      </div>
+    );
+  }
+
+  if (isError || !b) {
+    return (
+      <div className="space-y-6">
+        <PageHeader title="Billing & Subscription" description="Your Edvanta plan and payments." />
+        <Card className="flex flex-col items-center gap-3 p-8 text-center">
+          <AlertTriangle size={28} className="text-danger" />
+          <p className="text-sm font-medium text-foreground">Couldn't load your billing details</p>
+          <p className="text-xs text-muted-foreground">Check your connection and try again.</p>
+          <Button size="sm" variant="secondary" onClick={() => refetch()}><RefreshCw size={14} /> Retry</Button>
+        </Card>
       </div>
     );
   }
@@ -112,7 +145,7 @@ export function BillingView() {
       // redirect to complete payment on. Anything else is an error, even if
       // the request itself didn't throw.
       if (res.data.settled) {
-        toast.success('Payment received — subscription renewed');
+        toast.success('Payment received — subscription updated');
         setStep('summary');
         return;
       }
@@ -131,7 +164,7 @@ export function BillingView() {
     if (!reference.trim()) return toast.error('Enter the transfer reference / transaction ID');
     try {
       await submitTransfer({ reference: reference.trim() }).unwrap();
-      toast.success('Submitted — we\'ll confirm and renew your subscription shortly');
+      toast.success('Submitted — we\'ll confirm and update your subscription shortly');
       setReference('');
       setStep('summary');
     } catch (e: any) {
@@ -144,7 +177,7 @@ export function BillingView() {
   const choosePlan = async (planKey: string, price: number) => {
     try {
       await selectPlan({ planKey }).unwrap();
-      toast.success('Plan updated');
+      toast.success(price > 0 ? 'Plan selected — pay to activate it' : 'Plan updated');
       // A paid plan needs payment next — walk the admin straight there
       // instead of dropping them back on a page with nothing to do.
       setStep(price > 0 ? 'payment' : 'summary');
@@ -156,6 +189,7 @@ export function BillingView() {
   return (
     <div className="space-y-6">
       <PageHeader title="Billing & Subscription" description="Your Edvanta plan and payments." />
+      <Stepper step={step} />
 
       {step === 'summary' && (
         <SummaryStep
@@ -171,6 +205,7 @@ export function BillingView() {
         <PlansStep
           plans={plans}
           currentPlan={b.plan}
+          pendingPlan={b.pendingPlan}
           selecting={selectingPlan}
           onBack={() => setStep('summary')}
           onChoose={choosePlan}
@@ -195,6 +230,37 @@ export function BillingView() {
   );
 }
 
+/* ── A small stepper so the flow always reads as "one thing at a time" ─── */
+function Stepper({ step }: { step: Step }) {
+  const activeIndex = STEPS.findIndex((s) => s.key === step);
+  return (
+    <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+      {STEPS.map((s, i) => (
+        <div key={s.key} className="flex items-center gap-1.5">
+          <span
+            className={cn(
+              'flex items-center gap-1.5 rounded-full px-2.5 py-1',
+              i === activeIndex && 'bg-primary-soft text-primary-soft-foreground',
+              i < activeIndex && 'text-foreground'
+            )}
+          >
+            <span
+              className={cn(
+                'flex h-4 w-4 items-center justify-center rounded-full text-[10px]',
+                i <= activeIndex ? 'bg-primary text-primary-foreground' : 'bg-muted'
+              )}
+            >
+              {i < activeIndex ? <Check size={10} /> : i + 1}
+            </span>
+            {s.label}
+          </span>
+          {i < STEPS.length - 1 && <ChevronRight size={13} className="text-muted-foreground/50" />}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /* ── Step 1: summary — the landing view, with clear next actions ────────── */
 function SummaryStep({
   b, free, needsPayment, onChangePlan, onPay,
@@ -207,7 +273,18 @@ function SummaryStep({
 }) {
   return (
     <div className="space-y-6">
-      {needsPayment && (
+      {b.pendingPlan && (
+        <div className="flex items-start gap-2.5 rounded-xl border border-primary/30 bg-primary-soft/40 px-4 py-3 text-sm text-primary">
+          <Info size={17} className="mt-0.5 shrink-0" />
+          <span className="flex-1">
+            You've selected the <strong className="capitalize">{b.pendingPlan}</strong> plan
+            ({formatCurrency(b.amountDue)}/{b.billingCycle === 'annual' ? 'yr' : 'mo'}) — it won't
+            take effect until payment is completed. You're still on <strong className="capitalize">{b.plan}</strong> for now.
+          </span>
+          <Button size="sm" onClick={onPay}>Complete payment</Button>
+        </div>
+      )}
+      {needsPayment && !b.pendingPlan && (
         <div className="flex items-start gap-2.5 rounded-xl border border-warning/30 bg-warning-soft px-4 py-3 text-sm text-warning">
           <AlertTriangle size={17} className="mt-0.5 shrink-0" />
           <span className="flex-1">
@@ -220,17 +297,17 @@ function SummaryStep({
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <Card className="p-5">
-          <p className="text-sm text-muted-foreground">Current plan</p>
+          <p className="flex items-center gap-1.5 text-sm text-muted-foreground"><Wallet size={14} /> Current plan</p>
           <p className="mt-1 text-2xl font-bold capitalize text-foreground">{b.plan}</p>
           <Badge variant={statusBadge[b.status] ?? 'neutral'} className="mt-2 capitalize">{b.status.replace('_', ' ')}</Badge>
         </Card>
         <Card className="p-5">
-          <p className="text-sm text-muted-foreground">Amount due / cycle</p>
+          <p className="flex items-center gap-1.5 text-sm text-muted-foreground"><CreditCard size={14} /> Amount due / cycle</p>
           <p className="mt-1 text-2xl font-bold text-foreground">{free ? 'Free' : formatCurrency(b.amountDue)}</p>
           <p className="mt-2 text-xs text-muted-foreground capitalize">{b.billingCycle}</p>
         </Card>
         <Card className="p-5">
-          <p className="text-sm text-muted-foreground">Next renewal</p>
+          <p className="flex items-center gap-1.5 text-sm text-muted-foreground"><Clock size={14} /> Next renewal</p>
           <p className="mt-1 text-2xl font-bold text-foreground">{b.nextBillingAt ? formatDate(b.nextBillingAt) : '—'}</p>
           {b.lastPaymentAt && <p className="mt-2 text-xs text-muted-foreground">Last paid {formatDateTime(b.lastPaymentAt)}</p>}
         </Card>
@@ -240,22 +317,28 @@ function SummaryStep({
         <Button variant={free ? 'primary' : 'secondary'} onClick={onChangePlan}>
           <Sparkles size={16} /> {free ? 'Choose a plan' : 'Change plan'}
         </Button>
-        {!free && !needsPayment && (
+        {!free && !needsPayment && !b.pendingPlan && (
           <Button variant="secondary" onClick={onPay}><CreditCard size={16} /> Make a payment</Button>
         )}
       </div>
 
       <Card>
-        <CardHeader><CardTitle>Payment history</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle>Payment history</CardTitle>
+          <CardDescription>Every payment attempt for your subscription, most recent first.</CardDescription>
+        </CardHeader>
         <CardContent>
           {b.payments.length === 0 ? (
-            <p className="py-4 text-sm text-muted-foreground">No payments yet.</p>
+            <div className="flex flex-col items-center gap-2 py-8 text-center">
+              <Wallet size={22} className="text-muted-foreground" />
+              <p className="text-sm text-muted-foreground">No payments yet.</p>
+            </div>
           ) : (
             <TableWrapper>
               <Table>
                 <TableHeader>
                   <TableRow className="hover:bg-transparent">
-                    <TableHead>Date</TableHead>
+                    <TableHead>Date & time</TableHead>
                     <TableHead>Amount</TableHead>
                     <TableHead>Method</TableHead>
                     <TableHead>Reference</TableHead>
@@ -263,15 +346,22 @@ function SummaryStep({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {b.payments.map((p, i) => (
-                    <TableRow key={p.id ?? i}>
-                      <TableCell className="whitespace-nowrap text-muted-foreground">{formatDateTime(p.paidAt ?? p.createdAt)}</TableCell>
-                      <TableCell className="font-medium text-foreground">{formatCurrency(p.amount)}</TableCell>
-                      <TableCell className="capitalize text-muted-foreground">{p.gateway}</TableCell>
-                      <TableCell className="max-w-[160px] truncate text-muted-foreground" title={p.reference ?? ''}>{p.reference ?? '—'}</TableCell>
-                      <TableCell><Badge variant={payBadge[p.status]} className="capitalize">{p.status}</Badge></TableCell>
-                    </TableRow>
-                  ))}
+                  {b.payments.map((p, i) => {
+                    const Icon = payIcon[p.status] ?? Clock;
+                    return (
+                      <TableRow key={p.id ?? i}>
+                        <TableCell className="whitespace-nowrap text-muted-foreground">{formatDateTime(p.paidAt ?? p.createdAt)}</TableCell>
+                        <TableCell className="font-medium text-foreground">{formatCurrency(p.amount)}</TableCell>
+                        <TableCell className="capitalize text-muted-foreground">{p.gateway}</TableCell>
+                        <TableCell className="max-w-[160px] truncate text-muted-foreground" title={p.reference ?? ''}>{p.reference ?? '—'}</TableCell>
+                        <TableCell>
+                          <Badge variant={payBadge[p.status]} className="capitalize">
+                            <Icon size={11} /> {p.status}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </TableWrapper>
@@ -284,10 +374,11 @@ function SummaryStep({
 
 /* ── Step 2: plans — shown only when the admin asks to view/change plans ── */
 function PlansStep({
-  plans, currentPlan, selecting, onBack, onChoose,
+  plans, currentPlan, pendingPlan, selecting, onBack, onChoose,
 }: {
   plans: { key: string; name: string; price: number; studentsLimit: number; storageGB: number; features: string[] }[];
   currentPlan: string;
+  pendingPlan: string | null;
   selecting: boolean;
   onBack: () => void;
   onChoose: (planKey: string, price: number) => void;
@@ -312,17 +403,19 @@ function PlansStep({
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {plans.map((p) => {
               const current = p.key === currentPlan;
+              const pending = p.key === pendingPlan;
               return (
                 <div
                   key={p.key}
                   className={cn(
-                    'flex flex-col rounded-xl border p-4',
-                    current ? 'border-primary bg-primary-soft/40' : 'border-border'
+                    'flex flex-col rounded-xl border p-4 transition-colors',
+                    current ? 'border-primary bg-primary-soft/40' : pending ? 'border-warning bg-warning-soft/40' : 'border-border hover:border-primary/40'
                   )}
                 >
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-2">
                     <p className="font-semibold text-foreground">{p.name}</p>
-                    {current && <Badge variant="primary">Current</Badge>}
+                    {current && <Badge variant="primary"><ShieldCheck size={11} /> Current</Badge>}
+                    {pending && <Badge variant="warning"><Clock size={11} /> Pending</Badge>}
                   </div>
                   <p className="mt-2 text-2xl font-bold text-foreground">
                     {p.price > 0 ? formatCurrency(p.price) : 'Free'}
@@ -342,7 +435,7 @@ function PlansStep({
                     loading={selecting}
                     onClick={() => onChoose(p.key, p.price)}
                   >
-                    {current ? 'Current plan' : 'Choose plan'}
+                    {current ? 'Current plan' : pending ? 'Selected — pay to activate' : 'Choose plan'}
                   </Button>
                 </div>
               );
@@ -371,16 +464,17 @@ function PaymentStep({
 }) {
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-3 rounded-xl border border-border bg-muted/40 p-4">
         <button onClick={onBack} className="text-muted-foreground hover:text-foreground" aria-label="Back">
           <ArrowLeft size={18} />
         </button>
-        <div>
+        <div className="flex-1">
           <p className="text-sm font-medium text-foreground">
-            Paying for the <span className="capitalize">{b.plan}</span> plan
+            Paying for the <span className="capitalize">{b.pendingPlan || b.plan}</span> plan
           </p>
           <p className="text-2xl font-bold text-foreground">{formatCurrency(b.amountDue)}</p>
         </div>
+        <Badge variant="neutral" className="capitalize">{b.billingCycle}</Badge>
       </div>
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
@@ -408,6 +502,9 @@ function PaymentStep({
                 <Button onClick={() => onPayOnline('safepay')} loading={checkingOut}>Pay now (test mode)</Button>
               )}
             </div>
+            <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+              <ShieldCheck size={12} /> Payments are processed securely by the gateway — Edvanta never sees your card details.
+            </p>
           </CardContent>
         </Card>
 
@@ -432,6 +529,7 @@ function PaymentStep({
               <Input id="ref" value={reference} onChange={(e) => setReference(e.target.value)} placeholder="e.g. IBFT-123456" />
               <Button type="submit" variant="secondary" loading={submitting} className="w-full"><CheckCircle2 size={16} /> I've transferred — submit</Button>
             </form>
+            <p className="text-[11px] text-muted-foreground">Bank transfers are confirmed manually and may take up to one business day.</p>
           </CardContent>
         </Card>
       </div>
