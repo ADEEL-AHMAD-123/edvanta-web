@@ -494,8 +494,8 @@ function SummaryStep({
                   </p>
                 ) : (
                   <p className="mt-0.5 text-xs text-muted-foreground">
-                    Save a card once and we'll charge it automatically each renewal — no more remembering to pay manually.
-                    You can turn this off any time.
+                    Paying online automatically saves your card for future renewals — nothing extra to do. If you paid
+                    by bank transfer, or want to set it up separately, you can save a card here too. You can turn this off any time.
                   </p>
                 )}
               </div>
@@ -512,13 +512,19 @@ function SummaryStep({
               failed, say so plainly rather than letting it fail silently
               until the account eventually goes past-due with no context. */}
           {b.autoRenew && b.autoChargeFailCount > 0 && (
-            <div className="mt-3 flex items-start gap-2 rounded-lg border border-warning/30 bg-warning-soft px-3 py-2 text-xs text-warning">
-              <AlertTriangle size={14} className="mt-0.5 shrink-0" />
-              <span>
-                Your saved card was declined on the last {b.autoChargeFailCount === 1 ? 'attempt' : `${b.autoChargeFailCount} attempts`}
-                {b.lastChargeAttempt?.reasonCode && <> — reported reason: {declineReasonLabel[b.lastChargeAttempt.reasonCode] ?? 'declined by the card issuer'}</>} —
-                we'll keep retrying automatically for a few days. If it keeps failing, you can pay manually below or update your card.
-              </span>
+            <div className="mt-3 flex flex-col gap-2 rounded-lg border border-warning/30 bg-warning-soft px-3 py-2 text-xs text-warning sm:flex-row sm:items-start sm:justify-between">
+              <div className="flex items-start gap-2">
+                <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+                <span>
+                  Your saved card was declined on the last {b.autoChargeFailCount === 1 ? 'attempt' : `${b.autoChargeFailCount} attempts`}
+                  {b.lastChargeAttempt?.reasonCode && <> — reported reason: {declineReasonLabel[b.lastChargeAttempt.reasonCode] ?? 'declined by the card issuer'}</>} —
+                  we'll keep retrying automatically for a few days. You can pay this cycle manually now, or replace your card.
+                </span>
+              </div>
+              <div className="flex shrink-0 gap-1.5">
+                <Button size="sm" variant="secondary" onClick={onPay}>Pay manually</Button>
+                <Button size="sm" variant="ghost" loading={startingAutoRenew} onClick={onEnableAutoRenew}>Update card</Button>
+              </div>
             </div>
           )}
         </Card>
@@ -686,6 +692,16 @@ function PaymentStep({
   onSubmitTransfer: (e: React.FormEvent) => void;
   onCopy: (v: string) => void;
 }) {
+  // Paying online is the primary, recommended path — when auto-renewal is
+  // available, it's also what enrolls the institution in it (one card
+  // entry both pays this bill and saves the card for future renewals, so
+  // there's no separate "now go save a card" step afterward). Bank transfer
+  // still works exactly as before, but it's demoted to a "pay another way"
+  // disclosure instead of an equally-weighted option, since it can't be
+  // auto-renewed and needs manual confirmation each time.
+  const [showManual, setShowManual] = useState(false);
+  const willAutoEnroll = b.autoRenewalAvailable && !b.autoRenew;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3 rounded-xl border border-border bg-muted/40 p-4">
@@ -701,42 +717,57 @@ function PaymentStep({
         <Badge variant="neutral" className="capitalize">{b.billingCycle}</Badge>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-        {/* Pay online */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2"><CreditCard size={18} /> Pay online</CardTitle>
-            <CardDescription>Pay instantly by card or wallet.</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {!b.online.live && (
-              <div className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning-soft px-3 py-2 text-xs text-warning">
-                <Info size={14} className="mt-0.5 shrink-0" />
-                <span>Test mode — no online gateway is configured yet. This will simulate an instant payment.</span>
-              </div>
-            )}
-            <div className="flex flex-wrap gap-2">
-              {liveGateways.length > 0 ? (
-                liveGateways.map((g, i) => (
-                  <Button key={g} variant={i === 0 ? 'primary' : 'secondary'} onClick={() => onPayOnline(g)} loading={checkingOut}>
-                    {gatewayLabel[g]}
-                  </Button>
-                ))
-              ) : (
-                <Button onClick={() => onPayOnline('safepay')} loading={checkingOut}>Pay now (test mode)</Button>
-              )}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><CreditCard size={18} /> Pay online</CardTitle>
+          <CardDescription>
+            {willAutoEnroll
+              ? "Pay instantly by card — we'll securely save it so future renewals are charged automatically. You can turn this off any time from Billing."
+              : 'Pay instantly by card or wallet.'}
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {!b.online.live && (
+            <div className="flex items-start gap-2 rounded-lg border border-warning/30 bg-warning-soft px-3 py-2 text-xs text-warning">
+              <Info size={14} className="mt-0.5 shrink-0" />
+              <span>Test mode — no online gateway is configured yet. This will simulate an instant payment.</span>
             </div>
-            <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-              <ShieldCheck size={12} /> Payments are processed securely by the gateway — Edvanta never sees your card details.
-            </p>
-          </CardContent>
-        </Card>
+          )}
+          <div className="flex flex-wrap gap-2">
+            {liveGateways.length > 0 ? (
+              liveGateways.map((g, i) => (
+                <Button key={g} variant={i === 0 ? 'primary' : 'secondary'} onClick={() => onPayOnline(g)} loading={checkingOut}>
+                  {gatewayLabel[g]}
+                </Button>
+              ))
+            ) : (
+              <Button onClick={() => onPayOnline('safepay')} loading={checkingOut}>Pay now (test mode)</Button>
+            )}
+          </div>
+          <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+            <ShieldCheck size={12} /> Payments are processed securely by the gateway — Edvanta never sees your card details.
+          </p>
+        </CardContent>
+      </Card>
 
-        {/* Bank transfer */}
+      {/* Bank transfer — collapsed behind a disclosure rather than shown as
+          an equal option, per the payment flow this page follows: card
+          payment is the primary/recommended path (it's what sets up
+          auto-renewal), manual transfer is a fallback for institutions who
+          specifically prefer or need it. */}
+      {!showManual ? (
+        <button
+          type="button"
+          onClick={() => setShowManual(true)}
+          className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-border py-3 text-sm text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+        >
+          <Building2 size={14} /> Prefer to pay by bank transfer instead?
+        </button>
+      ) : (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2"><Building2 size={18} /> Bank transfer</CardTitle>
-            <CardDescription>Transfer to our account, then submit the reference.</CardDescription>
+            <CardDescription>Transfer to our account, then submit the reference. Confirmed manually — no automatic renewal.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
             {b.bank.iban ? (
@@ -756,7 +787,7 @@ function PaymentStep({
             <p className="text-[11px] text-muted-foreground">Bank transfers are confirmed manually and may take up to one business day.</p>
           </CardContent>
         </Card>
-      </div>
+      )}
     </div>
   );
 }
