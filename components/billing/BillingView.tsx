@@ -22,7 +22,7 @@ import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils';
 import {
   useGetMyBillingQuery, useGetBillingPlansQuery, useSelectPlanMutation,
   useBillingCheckoutMutation, useVerifyPaymentMutation, useSubmitBankTransferMutation,
-  useLazyGetMyPaymentsQuery,
+  useLazyGetMyPaymentsQuery, useStartAutoRenewMutation, useConfirmAutoRenewMutation, useDisableAutoRenewMutation,
   type Gateway, type MyBilling, type BillingPayment,
 } from '@/store/api/billingApi';
 
@@ -47,6 +47,15 @@ const gatewayLabel: Record<Gateway, string> = {
   easypaisa: 'Pay with EasyPaisa',
 };
 
+const declineReasonLabel: Record<string, string> = {
+  insufficient_funds: 'insufficient funds',
+  expired_card: 'the card has expired',
+  card_blocked: 'the card was declined by the issuer',
+  auth_failed: 'authentication failed',
+  gateway_error: 'a temporary payment gateway issue',
+  other: 'the card issuer',
+};
+
 type Step = 'summary' | 'plans' | 'payment';
 
 const STEPS: { key: Step; label: string }[] = [
@@ -67,6 +76,9 @@ export function BillingView() {
   const [checkout, { isLoading: checkingOut }] = useBillingCheckoutMutation();
   const [verifyPayment] = useVerifyPaymentMutation();
   const [submitTransfer, { isLoading: submitting }] = useSubmitBankTransferMutation();
+  const [startAutoRenew, { isLoading: startingAutoRenew }] = useStartAutoRenewMutation();
+  const [confirmAutoRenew] = useConfirmAutoRenewMutation();
+  const [disableAutoRenew, { isLoading: disablingAutoRenew }] = useDisableAutoRenewMutation();
   const [reference, setReference] = useState('');
   const [step, setStep] = useState<Step>('summary');
   const [reconciling, setReconciling] = useState(false);
@@ -93,8 +105,30 @@ export function BillingView() {
     if (!tracker || verifiedRef.current) return;
     verifiedRef.current = true;
     setReconciling(true);
+    // Our own returnUrl for the save-card flow carries `?autorenew=1` so we
+    // can tell "returning from a one-off payment" apart from "returning
+    // from saving a card for auto-renewal" — they need different endpoints
+    // and different confirmation messages even though both come back with
+    // the same `?tracker=...` shape from Safepay.
+    const isAutoRenewSetup = searchParams.get('autorenew') === '1';
 
     (async () => {
+      if (isAutoRenewSetup) {
+        try {
+          const res = await confirmAutoRenew({ gatewayTxnId: tracker }).unwrap();
+          if (res.data.ok) {
+            toast.success('Auto-renewal enabled — your card is saved securely with Safepay');
+          } else {
+            toast.error(res.data.reason || 'Card setup did not complete — please try again');
+          }
+        } catch (e: any) {
+          toast.error(e?.data?.error?.message || 'Card setup did not complete — please try again');
+        }
+        setReconciling(false);
+        router.replace(pathname);
+        return;
+      }
+
       // A couple of quick retries in case the gateway's own record hasn't
       // caught up yet (a few seconds' lag is normal right after redirect).
       for (let attempt = 0; attempt < 4; attempt++) {
@@ -120,7 +154,7 @@ export function BillingView() {
       setReconciling(false);
       router.replace(pathname);
     })();
-  }, [searchParams, verifyPayment, router, pathname]);
+  }, [searchParams, verifyPayment, confirmAutoRenew, router, pathname]);
 
   if (isLoading || reconciling) {
     return (
@@ -221,6 +255,32 @@ export function BillingView() {
     }
   };
 
+  const onEnableAutoRenew = async () => {
+    try {
+      const res = await startAutoRenew().unwrap();
+      // Same "never assume success" rule as payOnline() — this only ever
+      // hands back a redirect to Safepay's card-save flow, there's no
+      // auto-settled shortcut for saving a card.
+      if (res.data.redirectUrl) {
+        window.location.href = res.data.redirectUrl;
+        return;
+      }
+      toast.error('Could not start card setup — please try again');
+    } catch (e: any) {
+      toast.error(e?.data?.error?.message || 'Could not start card setup');
+    }
+  };
+
+  const onDisableAutoRenew = async () => {
+    if (!window.confirm('Turn off auto-renewal? Your saved card will be removed and you\'ll need to pay manually going forward.')) return;
+    try {
+      await disableAutoRenew().unwrap();
+      toast.success('Auto-renewal turned off');
+    } catch (e: any) {
+      toast.error(e?.data?.error?.message || 'Could not turn off auto-renewal');
+    }
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader title="Billing & Subscription" description="Your Edvanta plan and payments." />
@@ -238,6 +298,10 @@ export function BillingView() {
           extraPayments={extraPayments}
           onLoadMorePayments={loadMorePayments}
           loadingMorePayments={loadingMorePayments}
+          onEnableAutoRenew={onEnableAutoRenew}
+          onDisableAutoRenew={onDisableAutoRenew}
+          startingAutoRenew={startingAutoRenew}
+          disablingAutoRenew={disablingAutoRenew}
         />
       )}
 
@@ -306,6 +370,7 @@ function Stepper({ step }: { step: Step }) {
 function SummaryStep({
   b, free, needsPayment, trialExpired, onChangePlan, onPay, onCancelScheduled,
   extraPayments, onLoadMorePayments, loadingMorePayments,
+  onEnableAutoRenew, onDisableAutoRenew, startingAutoRenew, disablingAutoRenew,
 }: {
   b: MyBilling;
   free: boolean;
@@ -317,6 +382,10 @@ function SummaryStep({
   extraPayments: BillingPayment[];
   onLoadMorePayments: () => void;
   loadingMorePayments: boolean;
+  onEnableAutoRenew: () => void;
+  onDisableAutoRenew: () => void;
+  startingAutoRenew: boolean;
+  disablingAutoRenew: boolean;
 }) {
   const allPayments = [...b.payments, ...extraPayments];
   const hasMorePayments = allPayments.length < b.paymentsTotal;
@@ -403,6 +472,57 @@ function SummaryStep({
           <Button variant="ghost" onClick={onPay}><CreditCard size={16} /> Renew early</Button>
         )}
       </div>
+
+      {/* Auto-renewal — a distinct opt-in, never shown for the free plan
+          (nothing to auto-charge). The "Save a card" entry point is gated
+          on the feature flag, but the card itself (and the "Turn off"
+          action specifically) still renders for anyone who's ALREADY
+          enrolled even if the flag gets turned off later — otherwise an
+          institution that opted in before a platform-side pause would have
+          no way to see or disable their own auto-renewal state. */}
+      {!free && (b.autoRenewalAvailable || b.autoRenew) && (
+        <Card className="p-5">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div className="flex items-start gap-2.5">
+              <RefreshCw size={17} className="mt-0.5 shrink-0 text-muted-foreground" />
+              <div>
+                <p className="text-sm font-medium text-foreground">Auto-renewal</p>
+                {b.autoRenew && b.savedCard ? (
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    We'll automatically charge <strong className="text-foreground">{b.savedCard.brand ?? 'your card'} •••• {b.savedCard.last4 ?? '····'}</strong>
+                    {b.savedCard.expiry && <> (expires {b.savedCard.expiry})</>} on your renewal date — no need to pay manually.
+                  </p>
+                ) : (
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    Save a card once and we'll charge it automatically each renewal — no more remembering to pay manually.
+                    You can turn this off any time.
+                  </p>
+                )}
+              </div>
+            </div>
+            {b.autoRenew ? (
+              <Button size="sm" variant="ghost" loading={disablingAutoRenew} onClick={onDisableAutoRenew}>Turn off</Button>
+            ) : (
+              <Button size="sm" variant="secondary" loading={startingAutoRenew} onClick={onEnableAutoRenew}>
+                <CreditCard size={14} /> Save a card
+              </Button>
+            )}
+          </div>
+          {/* Visible dunning state — if recent auto-charge attempts have
+              failed, say so plainly rather than letting it fail silently
+              until the account eventually goes past-due with no context. */}
+          {b.autoRenew && b.autoChargeFailCount > 0 && (
+            <div className="mt-3 flex items-start gap-2 rounded-lg border border-warning/30 bg-warning-soft px-3 py-2 text-xs text-warning">
+              <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+              <span>
+                Your saved card was declined on the last {b.autoChargeFailCount === 1 ? 'attempt' : `${b.autoChargeFailCount} attempts`}
+                {b.lastChargeAttempt?.reasonCode && <> — reported reason: {declineReasonLabel[b.lastChargeAttempt.reasonCode] ?? 'declined by the card issuer'}</>} —
+                we'll keep retrying automatically for a few days. If it keeps failing, you can pay manually below or update your card.
+              </span>
+            </div>
+          )}
+        </Card>
+      )}
 
       <Card>
         <CardHeader>

@@ -15,6 +15,7 @@ import { formatCurrency, formatDate } from '@/lib/utils';
 import {
   useGetPendingPaymentsQuery, useGetDisputedPaymentsQuery, useResolveDisputeMutation,
   useConfirmPaymentMutation, useRejectPaymentMutation,
+  useGetNeedsReviewPaymentsQuery, useResolveNeedsReviewMutation,
 } from '@/store/api/billingApi';
 import { useUpdateInstitutionMutation } from '@/store/api/superadminApi';
 
@@ -23,15 +24,32 @@ export function PendingPaymentsView() {
   const rows = data?.data ?? [];
   const { data: disputedRes } = useGetDisputedPaymentsQuery();
   const disputed = disputedRes?.data ?? [];
+  const { data: needsReviewRes } = useGetNeedsReviewPaymentsQuery();
+  const needsReview = needsReviewRes?.data ?? [];
   const [confirm, { isLoading: confirming }] = useConfirmPaymentMutation();
   const [reject, { isLoading: rejecting }] = useRejectPaymentMutation();
   const [resolveDispute, { isLoading: resolving }] = useResolveDisputeMutation();
+  const [resolveReview, { isLoading: resolvingReview }] = useResolveNeedsReviewMutation();
   const [updateInstitution, { isLoading: suspending }] = useUpdateInstitutionMutation();
   const busy = confirming || rejecting;
 
   const onConfirm = async (institutionId: string, paymentId: string) => {
-    try { await confirm({ institutionId, paymentId }).unwrap(); toast.success('Payment confirmed — subscription renewed'); }
-    catch (e: any) { toast.error(e?.data?.error?.message || 'Could not confirm'); }
+    try {
+      const res = await confirm({ institutionId, paymentId }).unwrap();
+      if (res.data.status === 'blocked_by_concurrent_payment') {
+        // A different payment on the same subscription already settled this
+        // billing cycle (e.g. an online payment's webhook landed at the same
+        // moment) — settle()'s own guard against double-crediting caught it,
+        // so this one was deliberately left as-is rather than confirmed.
+        // Needs a human look, not a generic success toast.
+        toast(
+          'Another payment already settled this billing period — this one was left pending for manual review rather than double-crediting the subscription.',
+          { icon: '⚠️', duration: 7000 }
+        );
+        return;
+      }
+      toast.success(res.data.status === 'already_confirmed' ? 'This payment was already confirmed' : 'Payment confirmed — subscription renewed');
+    } catch (e: any) { toast.error(e?.data?.error?.message || 'Could not confirm'); }
   };
   const onReject = async (institutionId: string, paymentId: string) => {
     try { await reject({ institutionId, paymentId }).unwrap(); toast.success('Payment rejected'); }
@@ -40,6 +58,10 @@ export function PendingPaymentsView() {
   const onResolveDispute = async (institutionId: string, paymentId: string) => {
     try { await resolveDispute({ institutionId, paymentId }).unwrap(); toast.success('Dispute marked as resolved'); }
     catch (e: any) { toast.error(e?.data?.error?.message || 'Could not resolve'); }
+  };
+  const onResolveReview = async (institutionId: string, paymentId: string) => {
+    try { await resolveReview({ institutionId, paymentId }).unwrap(); toast.success('Marked as reviewed'); }
+    catch (e: any) { toast.error(e?.data?.error?.message || 'Could not mark as reviewed'); }
   };
   const onSuspend = async (institutionId: string, institutionName: string) => {
     if (!window.confirm(`Suspend ${institutionName}? They'll lose access until reactivated.`)) return;
@@ -88,6 +110,50 @@ export function PendingPaymentsView() {
                           <CheckCircle2 size={14} /> Mark resolved
                         </Button>
                       </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableWrapper>
+        </Card>
+      )}
+
+      {needsReview.length > 0 && (
+        <Card className="border-warning/30">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-warning"><AlertTriangle size={17} /> Needs review — possible duplicate charges</CardTitle>
+            <CardDescription>
+              A gateway charge genuinely went through but couldn't be automatically credited because another payment
+              on the same subscription already settled that billing cycle first — likely worth a manual refund or credit check.
+            </CardDescription>
+          </CardHeader>
+          <TableWrapper>
+            <Table>
+              <TableHeader>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead>Institution</TableHead>
+                  <TableHead>Amount</TableHead>
+                  <TableHead>Method</TableHead>
+                  <TableHead>Reference</TableHead>
+                  <TableHead>Reported</TableHead>
+                  <TableHead>Note</TableHead>
+                  <TableHead />
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {needsReview.map((r) => (
+                  <TableRow key={r.paymentId}>
+                    <TableCell className="font-medium text-foreground">{r.institutionName}</TableCell>
+                    <TableCell className="font-medium text-foreground">{formatCurrency(r.amount)}</TableCell>
+                    <TableCell><Badge variant="neutral" className="capitalize">{r.gateway}</Badge></TableCell>
+                    <TableCell className="max-w-[140px] truncate text-muted-foreground" title={r.reference ?? ''}>{r.reference ?? '—'}</TableCell>
+                    <TableCell className="whitespace-nowrap text-xs text-muted-foreground">{formatDate(r.createdAt)}</TableCell>
+                    <TableCell className="max-w-[280px] truncate text-xs text-muted-foreground" title={r.reviewNote ?? ''}>{r.reviewNote ?? '—'}</TableCell>
+                    <TableCell className="text-right">
+                      <Button size="sm" variant="soft" disabled={resolvingReview} onClick={() => onResolveReview(r.institutionId, r.paymentId)}>
+                        <CheckCircle2 size={14} /> Mark reviewed
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}

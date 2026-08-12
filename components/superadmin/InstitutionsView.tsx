@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Building2, AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Building2, AlertCircle, ChevronLeft, ChevronRight, RefreshCw } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -108,7 +108,16 @@ export function InstitutionsView() {
                       <TableCell className="capitalize text-muted-foreground">{i.plan}</TableCell>
                       <TableCell className="text-foreground">{i.students}</TableCell>
                       <TableCell className="text-muted-foreground">{formatDate(i.createdAt)}</TableCell>
-                      <TableCell><Badge variant={statusBadge[i.status].variant}>{statusBadge[i.status].label}</Badge></TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1.5">
+                          <Badge variant={statusBadge[i.status].variant}>{statusBadge[i.status].label}</Badge>
+                          {i.autoRenew && (
+                            <span title="Auto-renewal is on for this institution">
+                              <Badge variant="neutral"><RefreshCw size={10} /> Auto</Badge>
+                            </span>
+                          )}
+                        </div>
+                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -127,7 +136,10 @@ export function InstitutionsView() {
                       <p className="text-xs capitalize text-muted-foreground">{i.plan} · {i.students} students</p>
                     </div>
                   </div>
-                  <Badge variant={statusBadge[i.status].variant}>{statusBadge[i.status].label}</Badge>
+                  <div className="flex items-center gap-1.5">
+                    <Badge variant={statusBadge[i.status].variant}>{statusBadge[i.status].label}</Badge>
+                    {i.autoRenew && <Badge variant="neutral"><RefreshCw size={10} /> Auto</Badge>}
+                  </div>
                 </div>
               </Card>
             ))}

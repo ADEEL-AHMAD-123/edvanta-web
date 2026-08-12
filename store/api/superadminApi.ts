@@ -20,6 +20,7 @@ export interface InstitutionRow {
   status: 'active' | 'trial' | 'suspended' | 'pending';
   students: number;
   createdAt: string;
+  autoRenew: boolean;
 }
 
 export interface RevenueSubscription {
@@ -76,13 +77,20 @@ export interface InstitutionDetail {
     city: string | null; province: string | null; createdAt: string;
     trialEndsAt: string | null; monthlyAmount: number; studentsLimit: number | null;
     subscribedSince: string | null; lastPaymentAt: string | null; nextBillingAt: string | null;
+    autoRenew: boolean; savedCardLast4: string | null;
   };
   counts: { students: number; teachers: number; classes: number; subjects: number };
   classes: { id: string; name: string; academicYear: string; sections: { name: string; students: number }[] }[];
   subjects: { id: string; name: string; code: string | null; className: string | null; teacherName: string | null }[];
   teachers: { id: string; name: string; phone: string; email: string | null; isActive: boolean }[];
   recentStudents: { id: string; name: string; rollNumber: string; className: string | null }[];
-  payments: { amount: number; gateway: string; status: string; paidAt: string }[];
+  payments: { amount: number; gateway: string; status: string; paidAt: string; origin: 'bank_transfer' | 'auto_renewal' | 'checkout' }[];
+  chargeAttempts: {
+    attemptedAt: string;
+    amount: number;
+    success: boolean;
+    reasonCode: 'insufficient_funds' | 'expired_card' | 'card_blocked' | 'auth_failed' | 'gateway_error' | 'other' | null;
+  }[];
 }
 
 interface ApiArray<T> { success: boolean; data: T[]; message: string; meta?: any }

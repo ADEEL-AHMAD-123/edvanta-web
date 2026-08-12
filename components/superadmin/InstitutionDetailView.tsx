@@ -37,6 +37,21 @@ const statusBadge: Record<string, { variant: 'success' | 'warning' | 'danger' | 
 
 const PLAN_OPTS = ['free', 'growth', 'standard', 'enterprise'];
 
+const originLabel: Record<string, string> = {
+  bank_transfer: 'Bank transfer',
+  auto_renewal: 'Auto-renewal',
+  checkout: 'Manual (online)',
+};
+
+const declineReasonLabel: Record<string, string> = {
+  insufficient_funds: 'Insufficient funds',
+  expired_card: 'Card expired',
+  card_blocked: 'Declined by issuer',
+  auth_failed: 'Authentication failed',
+  gateway_error: 'Gateway error',
+  other: 'Declined',
+};
+
 function Row({ label, value }: { label: string; value?: string | null }) {
   return (
     <div className="flex items-center justify-between gap-4 py-2.5">
@@ -178,6 +193,10 @@ export function InstitutionDetailView({ id }: { id: string }) {
                 <Row label="Subscribed since" value={inst.subscribedSince ? formatDate(inst.subscribedSince) : '—'} />
                 <Row label="Last payment" value={inst.lastPaymentAt ? formatDateTime(inst.lastPaymentAt) : '—'} />
                 <Row label="Next billing" value={inst.nextBillingAt ? formatDate(inst.nextBillingAt) : '—'} />
+                <Row
+                  label="Auto-renewal"
+                  value={inst.autoRenew ? `On (card •••• ${inst.savedCardLast4 ?? '····'})` : 'Off — manual payment'}
+                />
               </CardContent>
             </Card>
 
@@ -193,6 +212,7 @@ export function InstitutionDetailView({ id }: { id: string }) {
                         <TableRow className="hover:bg-transparent">
                           <TableHead>Amount</TableHead>
                           <TableHead>Method</TableHead>
+                          <TableHead>Origin</TableHead>
                           <TableHead>Status</TableHead>
                           <TableHead>Date &amp; time</TableHead>
                         </TableRow>
@@ -202,6 +222,9 @@ export function InstitutionDetailView({ id }: { id: string }) {
                           <TableRow key={i}>
                             <TableCell className="font-medium text-foreground">{formatCurrency(p.amount)}</TableCell>
                             <TableCell className="capitalize text-muted-foreground">{p.gateway}</TableCell>
+                            <TableCell className="text-muted-foreground">
+                              <Badge variant={p.origin === 'auto_renewal' ? 'neutral' : 'neutral'}>{originLabel[p.origin] ?? p.origin}</Badge>
+                            </TableCell>
                             <TableCell>
                               <Badge variant={p.status === 'success' ? 'success' : p.status === 'failed' ? 'danger' : 'warning'} className="capitalize">{p.status}</Badge>
                             </TableCell>
@@ -214,6 +237,45 @@ export function InstitutionDetailView({ id }: { id: string }) {
                 )}
               </CardContent>
             </Card>
+
+            {/* Only shown when there's actually auto-renewal attempt history
+                to review — most institutions (manual-only) will never see
+                this card at all. Surfaces the same decline-reason data the
+                institution admin already sees on their own billing page
+                (myBilling()'s lastChargeAttempt), so a superadmin
+                investigating a past_due account doesn't have to guess why
+                auto-renewal gave up. */}
+            {d.chargeAttempts.length > 0 && (
+              <Card className="lg:col-span-3">
+                <CardHeader><CardTitle>Auto-renewal charge attempts</CardTitle></CardHeader>
+                <CardContent className="p-0">
+                  <TableWrapper className="rounded-none border-0">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="hover:bg-transparent">
+                          <TableHead>Amount</TableHead>
+                          <TableHead>Result</TableHead>
+                          <TableHead>Reason</TableHead>
+                          <TableHead>Attempted</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {d.chargeAttempts.map((a, i) => (
+                          <TableRow key={i}>
+                            <TableCell className="font-medium text-foreground">{formatCurrency(a.amount)}</TableCell>
+                            <TableCell>
+                              <Badge variant={a.success ? 'success' : 'danger'}>{a.success ? 'Succeeded' : 'Declined'}</Badge>
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">{a.reasonCode ? declineReasonLabel[a.reasonCode] ?? a.reasonCode : '—'}</TableCell>
+                            <TableCell className="text-muted-foreground">{formatDateTime(a.attemptedAt)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableWrapper>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </TabsContent>
       </Tabs>

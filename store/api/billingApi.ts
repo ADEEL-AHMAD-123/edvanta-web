@@ -43,6 +43,17 @@ export interface MyBilling {
   paymentsTotal: number;
   online: { safepay: boolean; jazzcash: boolean; easypaisa: boolean; live: boolean };
   bank: { name: string | null; accountTitle: string | null; iban: string | null };
+  // Auto-renewal (tokenized card, automatic charge on renewal) — a separate
+  // opt-in on top of everything above, never assumed/defaulted on.
+  autoRenewalAvailable: boolean;
+  autoRenew: boolean;
+  savedCard: { brand: string | null; last4: string | null; expiry: string | null } | null;
+  autoChargeFailCount: number;
+  lastChargeAttempt: {
+    attemptedAt: string;
+    success: boolean;
+    reasonCode: 'insufficient_funds' | 'expired_card' | 'card_blocked' | 'auth_failed' | 'gateway_error' | 'other' | null;
+  } | null;
 }
 
 export interface BillingPlan {
@@ -74,6 +85,20 @@ export interface DisputedPayment {
   reference: string | null;
   status: string;
   disputeNote: string | null;
+  resolved: boolean;
+  resolvedAt: string | null;
+  createdAt: string;
+}
+
+export interface NeedsReviewPayment {
+  institutionId: string;
+  institutionName: string;
+  paymentId: string;
+  amount: number;
+  gateway: string;
+  reference: string | null;
+  status: string;
+  reviewNote: string | null;
   resolved: boolean;
   resolvedAt: string | null;
   createdAt: string;
@@ -123,6 +148,23 @@ export const billingApi = baseApi.injectEndpoints({
       invalidatesTags: [{ type: 'Billing', id: 'ME' }],
     }),
 
+    // Auto-renewal — save a card (zero-amount verification), confirm it
+    // after the redirect back, or turn it off.
+    startAutoRenew: builder.mutation<ApiObject<{ redirectUrl: string; gatewayTxnId: string | null }>, void>({
+      query: () => ({ url: '/billing/auto-renew/start', method: 'POST' }),
+    }),
+    confirmAutoRenew: builder.mutation<
+      ApiObject<{ ok: boolean; reason?: string; savedCard?: { brand: string | null; last4: string | null; expiry: string | null } }>,
+      { gatewayTxnId: string }
+    >({
+      query: ({ gatewayTxnId }) => ({ url: `/billing/auto-renew/confirm?gatewayTxnId=${encodeURIComponent(gatewayTxnId)}` }),
+      invalidatesTags: [{ type: 'Billing', id: 'ME' }],
+    }),
+    disableAutoRenew: builder.mutation<ApiObject<{ ok: boolean }>, void>({
+      query: () => ({ url: '/billing/auto-renew/disable', method: 'POST' }),
+      invalidatesTags: [{ type: 'Billing', id: 'ME' }],
+    }),
+
     // Super admin
     getPendingPayments: builder.query<ApiObject<PendingPayment[]>, void>({
       query: () => '/billing/pending',
@@ -136,7 +178,26 @@ export const billingApi = baseApi.injectEndpoints({
       query: ({ institutionId, paymentId }) => ({ url: `/billing/${institutionId}/payments/${paymentId}/resolve-dispute`, method: 'POST' }),
       invalidatesTags: [{ type: 'Billing', id: 'DISPUTED' }],
     }),
-    confirmPayment: builder.mutation<ApiObject<unknown>, { institutionId: string; paymentId: string }>({
+    // A gateway charge that genuinely happened but couldn't be credited
+    // because settle()'s own race guard caught a different payment already
+    // winning the same billing cycle — needs a human to look at, likely
+    // refund. See markPaymentNeedsReview() in billing.service.ts.
+    getNeedsReviewPayments: builder.query<ApiObject<NeedsReviewPayment[]>, void>({
+      query: () => '/billing/needs-review',
+      providesTags: [{ type: 'Billing', id: 'NEEDS_REVIEW' }],
+    }),
+    resolveNeedsReview: builder.mutation<ApiObject<{ ok: boolean }>, { institutionId: string; paymentId: string }>({
+      query: ({ institutionId, paymentId }) => ({ url: `/billing/${institutionId}/payments/${paymentId}/resolve-review`, method: 'POST' }),
+      invalidatesTags: [{ type: 'Billing', id: 'NEEDS_REVIEW' }],
+    }),
+    confirmPayment: builder.mutation<
+      ApiObject<{
+        ok: boolean;
+        status: 'confirmed' | 'already_confirmed' | 'blocked_by_concurrent_payment';
+        nextBillingAt: string | null;
+      }>,
+      { institutionId: string; paymentId: string }
+    >({
       query: ({ institutionId, paymentId }) => ({ url: `/billing/${institutionId}/payments/${paymentId}/confirm`, method: 'POST' }),
       // Also refresh the superadmin's own institution-detail and revenue
       // views for this institution — confirming a payment changes both.
@@ -165,9 +226,14 @@ export const {
   useBillingCheckoutMutation,
   useVerifyPaymentMutation,
   useSubmitBankTransferMutation,
+  useStartAutoRenewMutation,
+  useConfirmAutoRenewMutation,
+  useDisableAutoRenewMutation,
   useGetPendingPaymentsQuery,
   useGetDisputedPaymentsQuery,
   useResolveDisputeMutation,
+  useGetNeedsReviewPaymentsQuery,
+  useResolveNeedsReviewMutation,
   useConfirmPaymentMutation,
   useRejectPaymentMutation,
 } = billingApi;
