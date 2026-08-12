@@ -25,7 +25,16 @@ const statusBadge: Record<InstitutionRow['status'], { variant: 'success' | 'warn
   trial: { variant: 'warning', label: 'Trial' },
   suspended: { variant: 'danger', label: 'Suspended' },
   pending: { variant: 'neutral', label: 'Pending' },
+  past_due: { variant: 'warning', label: 'Past due' },
 };
+// Fallback for any status value this map doesn't (yet) know about — the
+// backend's status enum has changed underneath this map before (past_due
+// was added for the overdue/auto-renewal flows without this map being
+// updated, which crashed this whole page) and there's nothing that forces
+// the two to stay in sync at compile time once real data reaches here.
+// Degrading to a plain neutral badge with the raw value is far better than
+// throwing on `.variant` of `undefined`.
+const fallbackBadge = (status: string) => statusBadge[status as InstitutionRow['status']] ?? { variant: 'neutral' as const, label: status };
 
 const PAGE_SIZE = 20;
 
@@ -67,6 +76,7 @@ export function InstitutionsView() {
               <SelectItem value="all">All statuses</SelectItem>
               <SelectItem value="active">Active</SelectItem>
               <SelectItem value="trial">Trial</SelectItem>
+              <SelectItem value="past_due">Past due</SelectItem>
               <SelectItem value="suspended">Suspended</SelectItem>
             </SelectContent>
           </Select>
@@ -110,7 +120,7 @@ export function InstitutionsView() {
                       <TableCell className="text-muted-foreground">{formatDate(i.createdAt)}</TableCell>
                       <TableCell>
                         <div className="flex items-center gap-1.5">
-                          <Badge variant={statusBadge[i.status].variant}>{statusBadge[i.status].label}</Badge>
+                          <Badge variant={fallbackBadge(i.status).variant}>{fallbackBadge(i.status).label}</Badge>
                           {i.autoRenew && (
                             <span title="Auto-renewal is on for this institution">
                               <Badge variant="neutral"><RefreshCw size={10} /> Auto</Badge>
@@ -137,7 +147,7 @@ export function InstitutionsView() {
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5">
-                    <Badge variant={statusBadge[i.status].variant}>{statusBadge[i.status].label}</Badge>
+                    <Badge variant={fallbackBadge(i.status).variant}>{fallbackBadge(i.status).label}</Badge>
                     {i.autoRenew && <Badge variant="neutral"><RefreshCw size={10} /> Auto</Badge>}
                   </div>
                 </div>

@@ -19,6 +19,7 @@ const statusBadge = {
   trial: 'warning' as const,
   suspended: 'danger' as const,
   pending: 'neutral' as const,
+  past_due: 'warning' as const,
 };
 
 export function SuperadminDashboard() {
@@ -75,7 +76,7 @@ export function SuperadminDashboard() {
                     <p className="truncate text-xs text-muted-foreground">{i.city ?? '—'} · {i.students} students</p>
                   </div>
                   <Badge variant="neutral" className="hidden capitalize sm:inline-flex">{i.plan}</Badge>
-                  <Badge variant={statusBadge[i.status]} className="capitalize">{i.status}</Badge>
+                  <Badge variant={statusBadge[i.status] ?? 'neutral'} className="capitalize">{i.status}</Badge>
                 </li>
               ))}
             </ul>

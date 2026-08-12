@@ -17,7 +17,7 @@ export interface InstitutionRow {
   type: string;
   city: string | null;
   plan: string;
-  status: 'active' | 'trial' | 'suspended' | 'pending';
+  status: 'active' | 'trial' | 'suspended' | 'pending' | 'past_due';
   students: number;
   createdAt: string;
   autoRenew: boolean;

@@ -33,7 +33,15 @@ const statusBadge: Record<string, { variant: 'success' | 'warning' | 'danger' | 
   trial: { variant: 'warning', label: 'Trial' },
   suspended: { variant: 'danger', label: 'Suspended' },
   pending: { variant: 'neutral', label: 'Pending' },
+  past_due: { variant: 'warning', label: 'Past due' },
 };
+// Same reasoning as InstitutionsView.tsx's fallback — this map has fallen
+// out of sync with the backend's actual status enum before (past_due was
+// added for overdue/auto-renewal handling without this file being updated),
+// which crashed this page outright on `.variant` of `undefined`. Falling
+// back to a neutral badge with the raw status string is far safer than
+// trusting every future status value will be added here in lockstep.
+const fallbackBadge = (status: string) => statusBadge[status] ?? { variant: 'neutral' as const, label: status };
 
 const PLAN_OPTS = ['free', 'growth', 'standard', 'enterprise'];
 
@@ -98,7 +106,7 @@ export function InstitutionDetailView({ id }: { id: string }) {
         description={`${inst.type} · ${inst.city ?? '—'} · joined ${formatDate(inst.createdAt)}`}
         actions={
           <div className="flex flex-wrap items-center gap-2">
-            <Badge variant={statusBadge[inst.status].variant}>{statusBadge[inst.status].label}</Badge>
+            <Badge variant={fallbackBadge(inst.status).variant}>{fallbackBadge(inst.status).label}</Badge>
             <Select value={inst.plan} onValueChange={setPlan}>
               <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -149,7 +157,7 @@ export function InstitutionDetailView({ id }: { id: string }) {
                 <Row label="Plan" value={inst.plan[0].toUpperCase() + inst.plan.slice(1)} />
                 <Row label="Monthly" value={formatCurrency(inst.monthlyAmount)} />
                 <Row label="Students limit" value={inst.studentsLimit ? String(inst.studentsLimit) : '—'} />
-                <Row label="Status" value={statusBadge[inst.status].label} />
+                <Row label="Status" value={fallbackBadge(inst.status).label} />
                 <Row label="Trial ends" value={inst.trialEndsAt ? formatDate(inst.trialEndsAt) : '—'} />
               </CardContent>
             </Card>
@@ -189,7 +197,7 @@ export function InstitutionDetailView({ id }: { id: string }) {
               <CardContent className="divide-y divide-border">
                 <Row label="Plan" value={inst.plan[0].toUpperCase() + inst.plan.slice(1)} />
                 <Row label="Monthly amount" value={formatCurrency(inst.monthlyAmount)} />
-                <Row label="Status" value={statusBadge[inst.status].label} />
+                <Row label="Status" value={fallbackBadge(inst.status).label} />
                 <Row label="Subscribed since" value={inst.subscribedSince ? formatDate(inst.subscribedSince) : '—'} />
                 <Row label="Last payment" value={inst.lastPaymentAt ? formatDateTime(inst.lastPaymentAt) : '—'} />
                 <Row label="Next billing" value={inst.nextBillingAt ? formatDate(inst.nextBillingAt) : '—'} />
