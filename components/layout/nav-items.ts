@@ -2,6 +2,7 @@ import {
   LayoutDashboard, Users, GraduationCap, BookOpen, CalendarCheck,
   DollarSign, FileText, Bell, BarChart2, Settings, School,
   Package, CalendarRange, CalendarClock, CreditCard, MessageSquare,
+  FlaskConical,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -62,6 +63,7 @@ export const NAV_ITEMS: Record<string, NavItem[]> = {
     { label: 'Payments', href: '/superadmin/billing', icon: CreditCard },
     { label: 'Revenue', href: '/superadmin/revenue', icon: DollarSign },
     { label: 'Analytics', href: '/superadmin/analytics', icon: BarChart2 },
+    { label: 'Testing', href: '/superadmin/testing', icon: FlaskConical },
     { label: 'Settings', href: '/superadmin/settings', icon: Settings },
   ],
 };

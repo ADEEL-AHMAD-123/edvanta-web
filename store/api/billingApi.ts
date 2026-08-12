@@ -190,6 +190,25 @@ export const billingApi = baseApi.injectEndpoints({
       query: ({ institutionId, paymentId }) => ({ url: `/billing/${institutionId}/payments/${paymentId}/resolve-review`, method: 'POST' }),
       invalidatesTags: [{ type: 'Billing', id: 'NEEDS_REVIEW' }],
     }),
+
+    // ─── Testing tools (superadmin) ─────────────────────────────────────
+    // Manually run the daily auto-renewal charge sweep instead of waiting
+    // for the 02:30 PKT cron — safe to call any time, it only ever picks up
+    // subscriptions whose renewal/retry is actually due (see the backend
+    // controller's own comment).
+    runAutoRenewSweep: builder.mutation<ApiObject<{ checked: number; charged: number; failed: number; fellBack: number }>, void>({
+      query: () => ({ url: '/billing/auto-renew/run-sweep', method: 'POST' }),
+      // Running the sweep can change institution status (past_due fallback)
+      // and payment/subscription state — refresh whatever a superadmin
+      // might be looking at right after triggering it.
+      invalidatesTags: [
+        { type: 'Billing', id: 'PENDING' },
+        { type: 'Billing', id: 'NEEDS_REVIEW' },
+        { type: 'Institutions', id: 'LIST' },
+        { type: 'Institutions', id: 'OVERVIEW' },
+        { type: 'Institutions', id: 'REVENUE' },
+      ],
+    }),
     confirmPayment: builder.mutation<
       ApiObject<{
         ok: boolean;
@@ -234,6 +253,7 @@ export const {
   useResolveDisputeMutation,
   useGetNeedsReviewPaymentsQuery,
   useResolveNeedsReviewMutation,
+  useRunAutoRenewSweepMutation,
   useConfirmPaymentMutation,
   useRejectPaymentMutation,
 } = billingApi;
