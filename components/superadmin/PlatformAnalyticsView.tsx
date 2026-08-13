@@ -1,6 +1,6 @@
 'use client';
 
-import { Building2, CheckCircle2, Beaker, GraduationCap, TrendingUp, BarChart3 } from 'lucide-react';
+import { Building2, CheckCircle2, Beaker, GraduationCap, TrendingUp, BarChart3, AlertTriangle } from 'lucide-react';
 import { PageHeader } from '@/components/ui/page-header';
 import { StatCard } from '@/components/ui/stat-card';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -32,16 +32,20 @@ export function PlatformAnalyticsView() {
     { name: 'Active', value: ov.active },
     { name: 'Trial', value: ov.trial },
     { name: 'Suspended', value: ov.suspended },
+    { name: 'Past due', value: ov.pastDue },
   ].filter((d) => d.value > 0);
 
   return (
     <div className="space-y-6">
       <PageHeader title="Analytics" description="Platform-wide insights across all institutions." />
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-5">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-6">
         <StatCard label="Institutions" value={ov.total.toLocaleString('en-PK')} icon={Building2} tone="primary" />
         <StatCard label="Active" value={ov.active.toLocaleString('en-PK')} icon={CheckCircle2} tone="success" />
         <StatCard label="On Trial" value={ov.trial.toLocaleString('en-PK')} icon={Beaker} tone="warning" />
+        {ov.pastDue > 0 && (
+          <StatCard label="Past Due" value={ov.pastDue.toLocaleString('en-PK')} icon={AlertTriangle} tone="danger" />
+        )}
         <StatCard label="Total Students" value={ov.totalStudents.toLocaleString('en-PK')} icon={GraduationCap} tone="info" />
         <StatCard label="MRR" value={formatCurrency(ov.mrr)} icon={TrendingUp} tone="success" />
       </div>

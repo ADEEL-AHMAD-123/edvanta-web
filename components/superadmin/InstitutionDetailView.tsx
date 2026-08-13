@@ -4,11 +4,12 @@ import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import {
   ArrowLeft, Building2, GraduationCap, Users, School, BookOpen,
-  Wallet, Ban, CheckCircle2, ChevronLeft, ChevronRight,
+  Wallet, Ban, CheckCircle2, ChevronLeft, ChevronRight, ShieldAlert,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { PageHeader } from '@/components/ui/page-header';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -24,7 +25,7 @@ import { SearchInput } from '@/components/ui/search-input';
 import { useDebounce } from '@/hooks/useDebounce';
 import {
   useGetInstitutionQuery, useUpdateInstitutionMutation, useGetInstitutionStudentsQuery,
-  type InstitutionDetail,
+  useGetPlanHistoryQuery, type InstitutionDetail, type PlanHistoryEntry,
 } from '@/store/api/superadminApi';
 import { formatCurrency, formatDate, formatDateTime } from '@/lib/utils';
 
@@ -51,6 +52,14 @@ const originLabel: Record<string, string> = {
   checkout: 'Manual (online)',
 };
 
+const planHistorySource: Record<PlanHistoryEntry['source'], { label: string; variant: 'success' | 'warning' | 'danger' | 'neutral' }> = {
+  payment: { label: 'Real payment', variant: 'success' },
+  self_serve_free: { label: 'Self-serve (free)', variant: 'neutral' },
+  scheduled_downgrade: { label: 'Scheduled downgrade', variant: 'neutral' },
+  admin_override: { label: 'Admin override — no payment', variant: 'warning' },
+  unknown: { label: 'Unknown', variant: 'neutral' },
+};
+
 const declineReasonLabel: Record<string, string> = {
   insufficient_funds: 'Insufficient funds',
   expired_card: 'Card expired',
@@ -72,6 +81,8 @@ function Row({ label, value }: { label: string; value?: string | null }) {
 export function InstitutionDetailView({ id }: { id: string }) {
   const { data, isLoading } = useGetInstitutionQuery(id);
   const [update, { isLoading: saving }] = useUpdateInstitutionMutation();
+  const { data: planHistoryRes } = useGetPlanHistoryQuery(id);
+  const planHistory = planHistoryRes?.data ?? [];
   const d = data?.data as InstitutionDetail | undefined;
 
   const setStatus = async (status: string) => {
@@ -79,7 +90,16 @@ export function InstitutionDetailView({ id }: { id: string }) {
     catch { toast.error('Could not update status'); }
   };
   const setPlan = async (planType: string) => {
-    try { await update({ id, body: { planType } }).unwrap(); toast.success('Plan updated'); }
+    // This is a direct administrative override, not a payment — no charge
+    // is recorded (a fake "successful payment" used to appear in the
+    // institution's own payment history from this exact action, which was
+    // misleading). Worth a real confirmation rather than a one-click
+    // dropdown change, since it immediately grants entitlements and
+    // changes what the institution is billed for going forward.
+    if (!window.confirm(
+      `Change this institution to the "${planType}" plan?\n\nThis is an administrative override — it takes effect immediately and does NOT record a payment. Use this for comp accounts or deals handled outside Edvanta, not as a substitute for the institution actually paying.`
+    )) return;
+    try { await update({ id, body: { planType } }).unwrap(); toast.success('Plan updated — no payment was recorded'); }
     catch { toast.error('Could not update plan'); }
   };
 
@@ -107,12 +127,6 @@ export function InstitutionDetailView({ id }: { id: string }) {
         actions={
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant={fallbackBadge(inst.status).variant}>{fallbackBadge(inst.status).label}</Badge>
-            <Select value={inst.plan} onValueChange={setPlan}>
-              <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
-              <SelectContent>
-                {PLAN_OPTS.map((p) => <SelectItem key={p} value={p} className="capitalize">{p}</SelectItem>)}
-              </SelectContent>
-            </Select>
             {inst.status === 'suspended' ? (
               <Button size="sm" loading={saving} onClick={() => setStatus('active')}><CheckCircle2 size={16} /> Activate</Button>
             ) : (
@@ -284,6 +298,91 @@ export function InstitutionDetailView({ id }: { id: string }) {
                 </CardContent>
               </Card>
             )}
+
+            {/* Every plan-affecting event, clearly labeled with exactly why
+                it happened — a real settled payment (with method and
+                amount), a free self-serve selection, a scheduled downgrade
+                finally applying, or a superadmin override with no payment.
+                This is the single source of truth for "where did this
+                institution's current plan actually come from," so there's
+                never ambiguity between a real subscriber and a comp/admin
+                account when looking at revenue. */}
+            <Card className="lg:col-span-3">
+              <CardHeader>
+                <CardTitle>Plan history</CardTitle>
+                <CardDescription>Every time this institution's plan changed, and exactly why — real payment or admin override.</CardDescription>
+              </CardHeader>
+              <CardContent className="p-0">
+                {planHistory.length === 0 ? (
+                  <p className="p-8 text-center text-sm text-muted-foreground">No plan changes recorded yet.</p>
+                ) : (
+                  <TableWrapper className="rounded-none border-0">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="hover:bg-transparent">
+                          <TableHead>Change</TableHead>
+                          <TableHead>Source</TableHead>
+                          <TableHead>Amount</TableHead>
+                          <TableHead>By</TableHead>
+                          <TableHead>Date &amp; time</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {planHistory.map((h) => {
+                          const src = planHistorySource[h.source] ?? planHistorySource.unknown;
+                          return (
+                            <TableRow key={h.id}>
+                              <TableCell className="font-medium capitalize text-foreground">
+                                {h.fromPlan ? <>{h.fromPlan} <span className="text-muted-foreground">→</span> {h.toPlan}</> : h.toPlan}
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant={src.variant}>{src.label}</Badge>
+                                {h.gateway && <span className="ml-1.5 text-xs capitalize text-muted-foreground">via {h.gateway}</span>}
+                              </TableCell>
+                              <TableCell className="text-muted-foreground">{h.amount ? formatCurrency(h.amount) : '—'}</TableCell>
+                              <TableCell className="text-muted-foreground">{h.byAdmin ?? '—'}</TableCell>
+                              <TableCell className="text-muted-foreground">{formatDateTime(h.at)}</TableCell>
+                            </TableRow>
+                          );
+                        })}
+                      </TableBody>
+                    </Table>
+                  </TableWrapper>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Deliberately separated from the quick-action header above
+                (Suspend/Activate) and requires its own confirmation in
+                setPlan() — this is an administrative override, not a
+                payment. It never appears in this institution's payment
+                history and never counts toward platform-wide MRR/revenue
+                (see applyPlanToInstitution()'s own comment on the backend)
+                until the institution actually pays through the normal
+                billing flow. Use for comp accounts, correcting a mistake,
+                or honoring a deal negotiated outside Edvanta — not as a
+                substitute for real payment. */}
+            <Card className="lg:col-span-3 border-warning/30">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-warning"><ShieldAlert size={18} /> Administrative override</CardTitle>
+                <CardDescription>
+                  Directly assign a plan without a payment. Takes effect immediately, but is never recorded as revenue —
+                  the institution's payment history and the platform's revenue numbers are unaffected until they actually pay.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap items-center gap-3">
+                  <Label htmlFor="plan-override" className="text-sm text-muted-foreground">Set plan to</Label>
+                  <Select value={inst.plan} onValueChange={setPlan}>
+                    <SelectTrigger id="plan-override" className="w-40"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {PLAN_OPTS.map((p) => <SelectItem key={p} value={p} className="capitalize">{p}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  {saving && <span className="text-xs text-muted-foreground">Applying…</span>}
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </TabsContent>
       </Tabs>

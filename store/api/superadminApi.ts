@@ -5,6 +5,7 @@ export interface PlatformOverview {
   active: number;
   trial: number;
   suspended: number;
+  pastDue: number;
   newThisMonth: number;
   totalStudents: number;
   mrr: number;
@@ -93,6 +94,23 @@ export interface InstitutionDetail {
   }[];
 }
 
+export interface PlanHistoryEntry {
+  id: string;
+  fromPlan: string | null;
+  toPlan: string | null;
+  source: 'payment' | 'self_serve_free' | 'scheduled_downgrade' | 'admin_override' | 'unknown';
+  amount: number | null;
+  gateway: string | null;
+  byAdmin: string | null;
+  at: string;
+}
+
+export interface BankDetails {
+  bankName: string;
+  bankAccountTitle: string;
+  bankIban: string;
+}
+
 interface ApiArray<T> { success: boolean; data: T[]; message: string; meta?: any }
 interface ApiObject<T> { success: boolean; data: T; message: string }
 
@@ -162,7 +180,20 @@ export const superadminApi = baseApi.injectEndpoints({
         { type: 'Institutions', id: 'LIST' },
         { type: 'Institutions', id: 'OVERVIEW' },
         { type: 'Institutions', id: 'REVENUE' },
+        { type: 'Institutions', id: `${id}-PLAN-HISTORY` },
       ],
+    }),
+    getPlanHistory: builder.query<ApiObject<PlanHistoryEntry[]>, string>({
+      query: (id) => `/superadmin/institutions/${id}/plan-history`,
+      providesTags: (_r, _e, id) => [{ type: 'Institutions', id: `${id}-PLAN-HISTORY` }],
+    }),
+    getBankDetails: builder.query<ApiObject<BankDetails>, void>({
+      query: () => '/superadmin/bank-details',
+      providesTags: [{ type: 'Institutions', id: 'BANK_DETAILS' }],
+    }),
+    updateBankDetails: builder.mutation<ApiObject<BankDetails>, Partial<BankDetails>>({
+      query: (body) => ({ url: '/superadmin/bank-details', method: 'PATCH', body }),
+      invalidatesTags: [{ type: 'Institutions', id: 'BANK_DETAILS' }],
     }),
   }),
 });
@@ -178,4 +209,7 @@ export const {
   useGetInstitutionQuery,
   useGetInstitutionStudentsQuery,
   useUpdateInstitutionMutation,
+  useGetPlanHistoryQuery,
+  useGetBankDetailsQuery,
+  useUpdateBankDetailsMutation,
 } = superadminApi;

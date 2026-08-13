@@ -3,17 +3,20 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Check, Palette } from 'lucide-react';
+import { useEffect } from 'react';
+import { Check, Palette, Landmark } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { PageHeader } from '@/components/ui/page-header';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Skeleton } from '@/components/ui/skeleton';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { useAppDispatch, useAppSelector } from '@/store/hooks';
 import { updateUser } from '@/store/slices/authSlice';
 import { useUpdateProfileMutation, useChangePasswordMutation } from '@/store/api/authApi';
+import { useGetBankDetailsQuery, useUpdateBankDetailsMutation } from '@/store/api/superadminApi';
 import { useTheme } from '@/components/theme/ThemeProvider';
 import { THEMES } from '@/lib/themes';
 import { cn } from '@/lib/utils';
@@ -30,11 +33,13 @@ export function SettingsView() {
         <TabsList>
           <TabsTrigger value="profile">Profile</TabsTrigger>
           <TabsTrigger value="security">Security</TabsTrigger>
+          {isSuperadmin && <TabsTrigger value="billing">Billing</TabsTrigger>}
           {isSuperadmin && <TabsTrigger value="appearance">Appearance</TabsTrigger>}
         </TabsList>
 
         <TabsContent value="profile"><ProfileTab /></TabsContent>
         <TabsContent value="security"><SecurityTab /></TabsContent>
+        {isSuperadmin && <TabsContent value="billing"><BillingTab /></TabsContent>}
         {isSuperadmin && <TabsContent value="appearance"><AppearanceTab /></TabsContent>}
       </Tabs>
     </div>
@@ -167,6 +172,67 @@ function SecurityTab() {
             <Button type="submit" loading={isLoading}>Update password</Button>
           </div>
         </form>
+      </CardContent>
+    </Card>
+  );
+}
+
+/* ── Billing — platform bank details (super admin) ───────────────────────────
+   Shown to every institution on their "Pay by bank transfer" screen — edited
+   here instead of an env var, so switching banks or fixing a typo doesn't
+   need a redeploy. */
+function BillingTab() {
+  const { data, isLoading } = useGetBankDetailsQuery();
+  const [updateBankDetails, { isLoading: saving }] = useUpdateBankDetailsMutation();
+  const { register, handleSubmit, reset } = useForm<{ bankName: string; bankAccountTitle: string; bankIban: string }>({
+    defaultValues: { bankName: '', bankAccountTitle: '', bankIban: '' },
+  });
+
+  useEffect(() => {
+    if (data?.data) reset(data.data);
+  }, [data, reset]);
+
+  const onSubmit = async (values: { bankName: string; bankAccountTitle: string; bankIban: string }) => {
+    try {
+      await updateBankDetails(values).unwrap();
+      toast.success('Bank details updated');
+    } catch (e: any) {
+      toast.error(e?.data?.error?.message || 'Could not update bank details');
+    }
+  };
+
+  return (
+    <Card className="max-w-xl">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2"><Landmark size={18} /> Bank transfer details</CardTitle>
+        <CardDescription>Shown to institutions when they choose to pay by bank transfer instead of online.</CardDescription>
+      </CardHeader>
+      <CardContent>
+        {isLoading ? (
+          <Skeleton className="h-40 w-full" />
+        ) : (
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+            <div>
+              <Label htmlFor="bankName">Bank name</Label>
+              <Input id="bankName" placeholder="e.g. Meezan Bank" {...register('bankName')} />
+            </div>
+            <div>
+              <Label htmlFor="bankAccountTitle">Account title</Label>
+              <Input id="bankAccountTitle" placeholder="e.g. Edvanta (Pvt) Ltd" {...register('bankAccountTitle')} />
+            </div>
+            <div>
+              <Label htmlFor="bankIban">IBAN</Label>
+              <Input id="bankIban" dir="ltr" placeholder="PK00XXXX0000000000000000" {...register('bankIban')} />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              The IBAN is what institutions actually need to pay — until it's set, they'll see a
+              "contact support for transfer details" message instead of the bank transfer option.
+            </p>
+            <div className="flex justify-end">
+              <Button type="submit" loading={saving}>Save changes</Button>
+            </div>
+          </form>
+        )}
       </CardContent>
     </Card>
   );

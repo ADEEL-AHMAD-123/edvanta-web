@@ -22,6 +22,10 @@ export interface MyBilling {
   // never a pending unpaid selection. Use this (not `amountDue`) for any
   // "your plan costs X" display.
   planPrice: number;
+  // Why the institution is on this plan right now — 'admin_override' means
+  // a superadmin granted it directly with no payment collected. Null only
+  // for very old institutions predating this tracking (no audit entry).
+  planSource: 'payment' | 'self_serve_free' | 'scheduled_downgrade' | 'admin_override' | 'unknown' | null;
   // Set only when a different plan has been selected but not yet paid for —
   // `plan` always reflects what's actually active/entitled right now.
   pendingPlan: string | null;
@@ -219,12 +223,16 @@ export const billingApi = baseApi.injectEndpoints({
     >({
       query: ({ institutionId, paymentId }) => ({ url: `/billing/${institutionId}/payments/${paymentId}/confirm`, method: 'POST' }),
       // Also refresh the superadmin's own institution-detail and revenue
-      // views for this institution — confirming a payment changes both.
+      // views for this institution — confirming a payment changes both, and
+      // (if it settles) can also grant entitlements for a plan the
+      // institution had pending, which writes a new Plan History row.
       invalidatesTags: (_r, _e, { institutionId }) => [
         { type: 'Billing', id: 'PENDING' },
+        { type: 'Billing', id: 'NEEDS_REVIEW' },
         { type: 'Institutions', id: institutionId },
         { type: 'Institutions', id: 'OVERVIEW' },
         { type: 'Institutions', id: 'REVENUE' },
+        { type: 'Institutions', id: `${institutionId}-PLAN-HISTORY` },
       ],
     }),
     rejectPayment: builder.mutation<ApiObject<unknown>, { institutionId: string; paymentId: string; reason?: string }>({

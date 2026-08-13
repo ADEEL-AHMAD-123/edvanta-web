@@ -440,19 +440,36 @@ function SummaryStep({
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Card className="p-5">
-          <p className="flex items-center gap-1.5 text-sm text-muted-foreground"><Wallet size={14} /> Current plan</p>
-          <div className="mt-1 flex items-baseline gap-2">
-            <p className="text-2xl font-bold capitalize text-foreground">{b.plan}</p>
-            {!free && <p className="text-sm text-muted-foreground">{formatCurrency(b.planPrice)}/{b.billingCycle === 'annual' ? 'yr' : 'mo'}</p>}
+          <div className="flex items-start gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary-soft-foreground"><Wallet size={18} /></span>
+            <div className="min-w-0">
+              <p className="text-sm text-muted-foreground">Current plan</p>
+              <div className="mt-0.5 flex flex-wrap items-baseline gap-x-2">
+                <p className="text-2xl font-bold capitalize text-foreground">{b.plan}</p>
+                {!free && <p className="text-sm text-muted-foreground">{formatCurrency(b.planPrice)}/{b.billingCycle === 'annual' ? 'yr' : 'mo'}</p>}
+              </div>
+              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                <Badge variant={statusBadge[b.status] ?? 'neutral'} className="capitalize">{b.status.replace('_', ' ')}</Badge>
+                {b.planSource === 'admin_override' && (
+                  <Badge variant="warning" title="This plan was granted by Edvanta support — no payment was collected for it.">
+                    Granted by support
+                  </Badge>
+                )}
+              </div>
+            </div>
           </div>
-          <Badge variant={statusBadge[b.status] ?? 'neutral'} className="mt-2 capitalize">{b.status.replace('_', ' ')}</Badge>
         </Card>
         <Card className="p-5">
-          <p className="flex items-center gap-1.5 text-sm text-muted-foreground"><Clock size={14} /> Next renewal</p>
-          <p className="mt-1 text-2xl font-bold text-foreground">{free ? '—' : b.nextBillingAt ? formatDate(b.nextBillingAt) : '—'}</p>
-          <p className="mt-2 text-xs text-muted-foreground">
-            {free ? 'Free plan — nothing to renew' : b.lastPaymentAt ? `Last paid ${formatDateTime(b.lastPaymentAt)}` : 'No payments yet'}
-          </p>
+          <div className="flex items-start gap-3">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-muted text-muted-foreground"><Clock size={18} /></span>
+            <div className="min-w-0">
+              <p className="text-sm text-muted-foreground">Next renewal</p>
+              <p className="mt-0.5 text-2xl font-bold text-foreground">{free ? '—' : b.nextBillingAt ? formatDate(b.nextBillingAt) : '—'}</p>
+              <p className="mt-2 text-xs text-muted-foreground">
+                {free ? 'Free plan — nothing to renew' : b.lastPaymentAt ? `Last paid ${formatDateTime(b.lastPaymentAt)}` : 'No payments yet'}
+              </p>
+            </div>
+          </div>
         </Card>
       </div>
 
@@ -483,8 +500,13 @@ function SummaryStep({
       {!free && (b.autoRenewalAvailable || b.autoRenew) && (
         <Card className="p-5">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div className="flex items-start gap-2.5">
-              <RefreshCw size={17} className="mt-0.5 shrink-0 text-muted-foreground" />
+            <div className="flex items-start gap-3">
+              <span className={cn(
+                'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl',
+                b.autoRenew ? 'bg-success-soft text-success' : 'bg-muted text-muted-foreground'
+              )}>
+                <RefreshCw size={16} />
+              </span>
               <div>
                 <p className="text-sm font-medium text-foreground">Auto-renewal</p>
                 {b.autoRenew && b.savedCard ? (
@@ -565,7 +587,19 @@ function SummaryStep({
                           <TableCell className="max-w-[160px] truncate text-muted-foreground" title={p.reference ?? ''}>{p.reference ?? '—'}</TableCell>
                           <TableCell>
                             <div className="flex flex-wrap items-center gap-1.5">
-                              <Badge variant={payBadge[p.status]} className="capitalize">
+                              <Badge
+                                variant={payBadge[p.status]}
+                                className="capitalize"
+                                title={
+                                  p.status === 'pending'
+                                    ? p.gateway === 'bank'
+                                      ? 'Waiting for manual confirmation by our team — usually within one business day. Contact support if it has been longer.'
+                                      : 'Still being processed by the payment gateway — this should resolve on its own shortly.'
+                                    : p.status === 'failed'
+                                      ? 'This attempt did not go through. It was not charged — try again or use a different method.'
+                                      : undefined
+                                }
+                              >
                                 <Icon size={11} /> {p.status}
                               </Badge>
                               {p.disputed && (
@@ -608,6 +642,26 @@ function PlansStep({
   onBack: () => void;
   onChoose: (planKey: string) => void;
 }) {
+  // `selecting` is one shared mutation-loading flag for the whole step —
+  // applying it directly to every card's button made all of them spin at
+  // once regardless of which plan was actually clicked. Track which key was
+  // clicked locally so only that one card shows a spinner; the rest are
+  // just disabled (not spinning) while the request is in flight.
+  const [clickingKey, setClickingKey] = useState<string | null>(null);
+  const handleChoose = (key: string) => {
+    setClickingKey(key);
+    onChoose(key);
+  };
+  // Once the mutation settles (success or error), `selecting` goes back to
+  // false — clear the local key too so a later click on the SAME plan (e.g.
+  // retrying after an error) shows its spinner again instead of staying
+  // stuck referencing a finished request.
+  useEffect(() => {
+    if (!selecting) setClickingKey(null);
+  }, [selecting]);
+
+  const mostExpensive = plans.reduce((max, p) => (p.price > max ? p.price : max), 0);
+
   return (
     <Card>
       <CardHeader>
@@ -625,33 +679,41 @@ function PlansStep({
         {plans.length === 0 ? (
           <p className="py-4 text-sm text-muted-foreground">No plans available right now.</p>
         ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {plans.map((p) => {
               const current = p.key === currentPlan;
               const pending = p.key === pendingPlan;
               const scheduled = p.key === scheduledPlan;
+              const recommended = !current && !pending && !scheduled && p.price > 0 && p.price === mostExpensive && plans.length > 1;
               return (
                 <div
                   key={p.key}
                   className={cn(
-                    'flex flex-col rounded-xl border p-4 transition-colors',
+                    'relative flex flex-col rounded-2xl border p-5 shadow-sm transition-all',
                     current ? 'border-primary bg-primary-soft/40'
                       : pending ? 'border-warning bg-warning-soft/40'
-                      : scheduled ? 'border-border bg-muted/50'
-                      : 'border-border hover:border-primary/40'
+                      : scheduled ? 'border-border bg-muted/40'
+                      : recommended ? 'border-primary/50 hover:-translate-y-0.5 hover:shadow-md'
+                      : 'border-border hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md'
                   )}
                 >
+                  {recommended && (
+                    <span className="absolute -top-2.5 left-5 rounded-full bg-primary px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-primary-foreground">
+                      Best value
+                    </span>
+                  )}
                   <div className="flex items-center justify-between gap-2">
                     <p className="font-semibold text-foreground">{p.name}</p>
                     {current && <Badge variant="primary"><ShieldCheck size={11} /> Current</Badge>}
                     {pending && <Badge variant="warning"><Clock size={11} /> Pending</Badge>}
                     {scheduled && <Badge variant="neutral"><Clock size={11} /> Scheduled</Badge>}
                   </div>
-                  <p className="mt-2 text-2xl font-bold text-foreground">
+                  <p className="mt-2 text-3xl font-bold tracking-tight text-foreground">
                     {p.price > 0 ? formatCurrency(p.price) : 'Free'}
                     {p.price > 0 && <span className="text-sm font-normal text-muted-foreground">/mo</span>}
                   </p>
-                  <ul className="mt-3 space-y-1.5 text-xs text-muted-foreground">
+                  <div className="my-4 h-px bg-border" />
+                  <ul className="flex-1 space-y-2 text-xs text-muted-foreground">
                     <li className="flex items-center gap-1.5"><Check size={13} className="text-success" /> Up to {p.studentsLimit.toLocaleString('en-PK')} students</li>
                     <li className="flex items-center gap-1.5"><Check size={13} className="text-success" /> {p.storageGB} GB storage</li>
                     {p.features.map((f) => (
@@ -659,11 +721,11 @@ function PlansStep({
                     ))}
                   </ul>
                   <Button
-                    className="mt-4"
+                    className="mt-5"
                     variant={current || pending || scheduled ? 'secondary' : 'primary'}
-                    disabled={current}
-                    loading={selecting}
-                    onClick={() => onChoose(p.key)}
+                    disabled={current || (selecting && clickingKey !== p.key)}
+                    loading={selecting && clickingKey === p.key}
+                    onClick={() => handleChoose(p.key)}
                   >
                     {current ? 'Current plan' : pending ? 'Selected — pay to activate' : scheduled ? 'Scheduled — choose again' : 'Choose plan'}
                   </Button>
