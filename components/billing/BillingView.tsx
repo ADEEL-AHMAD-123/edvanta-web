@@ -173,11 +173,24 @@ export function BillingView() {
               window.location.href = auto.data.redirectUrl;
               return; // navigating away — skip the router.replace below
             }
+            // The call succeeded but came back with nothing to redirect to —
+            // surface it instead of silently falling through, since this is
+            // exactly the kind of gap that otherwise looks like "nothing
+            // happened" from the institution's side.
+            console.error('[billing] startAutoRenew succeeded but returned no redirectUrl', auto);
+            toast('Payment succeeded, but we could not start the automatic card-save — you can save one manually below.', { icon: '⚠️', duration: 6000 });
           }
-        } catch {
-          // Non-fatal — the payment itself already succeeded and is fully
-          // recorded either way. The institution can still save a card
-          // manually from the billing page if this step didn't fire.
+        } catch (autoErr: any) {
+          // Payment itself already succeeded and is fully recorded either
+          // way — this can't block that. But log/report it (rather than the
+          // previous fully-silent swallow) so a real failure here is
+          // actually visible instead of just quietly falling back to the
+          // manual "Save a card" button with no explanation.
+          console.error('[billing] auto-chain card save failed after successful payment:', autoErr);
+          toast(
+            `Payment succeeded, but we couldn't automatically save your card${autoErr?.data?.error?.message ? ` (${autoErr.data.error.message})` : ''} — you can save one manually below.`,
+            { icon: '⚠️', duration: 7000 }
+          );
         }
       }
 
@@ -244,8 +257,16 @@ export function BillingView() {
               window.location.href = auto.data.redirectUrl;
               return;
             }
-          } catch {
-            // Non-fatal — payment already succeeded regardless.
+          } catch (autoErr: any) {
+            // Non-fatal — payment already succeeded regardless. Logged (not
+            // silently swallowed) so a real failure here is actually
+            // visible instead of just quietly landing back on the manual
+            // "Save a card" button with no explanation.
+            console.error('[billing] auto-chain card save failed after successful payment:', autoErr);
+            toast(
+              `Payment succeeded, but we couldn't automatically save your card${autoErr?.data?.error?.message ? ` (${autoErr.data.error.message})` : ''} — you can save one manually below.`,
+              { icon: '⚠️', duration: 7000 }
+            );
           }
         }
         setStep('summary');
