@@ -131,11 +131,13 @@ export function BillingView() {
 
       // A couple of quick retries in case the gateway's own record hasn't
       // caught up yet (a few seconds' lag is normal right after redirect).
+      let paidSuccessfully = false;
       for (let attempt = 0; attempt < 4; attempt++) {
         try {
           const res = await verifyPayment({ gateway: 'safepay', gatewayTxnId: tracker }).unwrap();
           if (res.data.status === 'success') {
             toast.success('Payment received — subscription updated');
+            paidSuccessfully = true;
             break;
           }
           if (res.data.status === 'failed') {
@@ -151,10 +153,38 @@ export function BillingView() {
         }
         if (attempt < 3) await new Promise((r) => setTimeout(r, 2000));
       }
+
+      // Combining the charge with a card-save in one Safepay session isn't
+      // possible (see billing.service.ts's checkout() for the two real
+      // production errors that ruled it out) — but the institution
+      // shouldn't have to go find a separate "Enable auto-renewal" button on
+      // their own to get the same end result. Chain straight into it
+      // automatically right after a successful manual payment, as long as
+      // they aren't already enrolled — a fresh `getMyBilling` read (not the
+      // possibly-stale `b` from before this redirect) decides that.
+      if (paidSuccessfully) {
+        try {
+          const fresh = await refetch().unwrap();
+          const freshBilling = fresh.data;
+          if (freshBilling.autoRenewalAvailable && !freshBilling.autoRenew) {
+            toast('Saving your card for automatic renewals…', { icon: '💳', duration: 3000 });
+            const auto = await startAutoRenew().unwrap();
+            if (auto.data.redirectUrl) {
+              window.location.href = auto.data.redirectUrl;
+              return; // navigating away — skip the router.replace below
+            }
+          }
+        } catch {
+          // Non-fatal — the payment itself already succeeded and is fully
+          // recorded either way. The institution can still save a card
+          // manually from the billing page if this step didn't fire.
+        }
+      }
+
       setReconciling(false);
       router.replace(pathname);
     })();
-  }, [searchParams, verifyPayment, confirmAutoRenew, router, pathname]);
+  }, [searchParams, verifyPayment, confirmAutoRenew, refetch, startAutoRenew, router, pathname]);
 
   if (isLoading || reconciling) {
     return (
@@ -201,6 +231,23 @@ export function BillingView() {
       // the request itself didn't throw.
       if (res.data.settled) {
         toast.success('Payment received — subscription updated');
+        // Same auto-chain as the real-redirect return path (see the
+        // reconciliation useEffect above) — only reachable here for a
+        // gateway that settles instantly (mock/dev), but kept consistent so
+        // an institution is never left needing to find a separate
+        // "Enable auto-renewal" action on their own.
+        if (gateway === 'safepay' && b.autoRenewalAvailable && !b.autoRenew) {
+          try {
+            const auto = await startAutoRenew().unwrap();
+            if (auto.data.redirectUrl) {
+              toast('Saving your card for automatic renewals…', { icon: '💳', duration: 3000 });
+              window.location.href = auto.data.redirectUrl;
+              return;
+            }
+          } catch {
+            // Non-fatal — payment already succeeded regardless.
+          }
+        }
         setStep('summary');
         return;
       }
