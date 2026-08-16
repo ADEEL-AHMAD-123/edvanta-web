@@ -71,7 +71,10 @@ export function PendingPaymentsView() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Subscription Payments" description="Confirm bank transfers and pending subscription payments." />
+      <PageHeader
+        title="Payments Needing Action"
+        description="Bank transfers awaiting confirmation, disputed charges, and duplicate-charge reviews. Successful and online payments appear in Revenue and each institution's own page."
+      />
 
       {disputed.length > 0 && (
         <Card className="border-danger/30">

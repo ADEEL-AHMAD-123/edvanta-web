@@ -36,6 +36,37 @@ interface ApiObject<T> {
   message: string;
 }
 
+export interface AttendanceCoverageSection {
+  sectionId: string;
+  sectionName: string;
+  studentsCount: number;
+  marked: boolean;
+  present: number;
+  absent: number;
+  late: number;
+  leave: number;
+}
+
+export interface AttendanceCoverageClass {
+  classId: string;
+  className: string;
+  sections: AttendanceCoverageSection[];
+}
+
+export interface AttendanceCoverage {
+  date: string;
+  totalClasses: number;
+  totalSections: number;
+  markedSections: number;
+  unmarkedSections: number;
+  present: number;
+  absent: number;
+  late: number;
+  leave: number;
+  presentRate: number;
+  classes: AttendanceCoverageClass[];
+}
+
 export interface MarkBody {
   classId: string;
   sectionId: string;
@@ -56,11 +87,17 @@ export const attendanceApi = baseApi.injectEndpoints({
       providesTags: [{ type: 'Attendance', id: 'SUMMARY' }],
     }),
 
+    getAttendanceCoverageToday: builder.query<ApiObject<AttendanceCoverage>, { date?: string } | void>({
+      query: (params) => `/attendance/coverage-today${params?.date ? `?date=${params.date}` : ''}`,
+      providesTags: [{ type: 'Attendance', id: 'COVERAGE' }],
+    }),
+
     markAttendance: builder.mutation<ApiObject<unknown>, MarkBody>({
       query: (body) => ({ url: '/attendance', method: 'POST', body }),
       invalidatesTags: [
         { type: 'Attendance', id: 'ROSTER' },
         { type: 'Attendance', id: 'SUMMARY' },
+        { type: 'Attendance', id: 'COVERAGE' },
       ],
     }),
   }),
@@ -69,5 +106,6 @@ export const attendanceApi = baseApi.injectEndpoints({
 export const {
   useGetRosterQuery,
   useGetAttendanceSummaryQuery,
+  useGetAttendanceCoverageTodayQuery,
   useMarkAttendanceMutation,
 } = attendanceApi;

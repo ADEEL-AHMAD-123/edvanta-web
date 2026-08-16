@@ -162,7 +162,11 @@ export function InstitutionDetailView({ id }: { id: string }) {
                 <Row label="Phone" value={inst.contactPhone} />
                 <Row label="City" value={inst.city} />
                 <Row label="Province" value={inst.province} />
-                <Row label="Subdomain" value={`${inst.slug}.edvanta.pk`} />
+                {/* Subdomain routing isn't actually wired up yet (no DNS/middleware
+                    behind it) — showing `slug.edvanta.pk` here looked like a live,
+                    working link when it isn't. Re-enable once subdomain routing is
+                    actually built. */}
+                {/* <Row label="Subdomain" value={`${inst.slug}.edvanta.pk`} /> */}
               </CardContent>
             </Card>
             <Card>

@@ -120,13 +120,18 @@ export function ImportCsvDrawer({ open, onClose, title, columns, sample, filenam
                   )}
                 </div>
                 {errors.length > 0 && (
-                  <div className="max-h-48 space-y-1.5 overflow-y-auto rounded-lg border border-border p-3">
-                    {errors.map((e, i) => (
-                      <div key={i} className="flex items-start gap-2 text-xs">
-                        <Badge variant="danger" className="shrink-0">Row {e.row}</Badge>
-                        <span className="text-muted-foreground">{e.message}</span>
-                      </div>
-                    ))}
+                  <div>
+                    <p className="mb-1.5 text-xs font-medium text-foreground">
+                      {errors.length} row{errors.length === 1 ? '' : 's'} couldn&apos;t be imported — row numbers match your spreadsheet (including the header row):
+                    </p>
+                    <div className="max-h-56 space-y-2 overflow-y-auto rounded-lg border border-border p-3">
+                      {errors.map((e, i) => (
+                        <div key={i} className="flex items-start gap-2 text-xs">
+                          <Badge variant="danger" className="mt-0.5 shrink-0">Row {e.row}</Badge>
+                          <span className="text-foreground">{e.message}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>

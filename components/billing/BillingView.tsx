@@ -491,7 +491,7 @@ function SummaryStep({
           <AlertTriangle size={17} className="mt-0.5 shrink-0" />
           <span className="flex-1">
             Your <strong className="capitalize">{b.plan}</strong> plan payment of{' '}
-            <strong>{formatCurrency(b.amountDue)}</strong> is outstanding.
+            <strong>{formatCurrency(b.amountDue)}</strong> has not been paid yet.
           </span>
           <Button size="sm" onClick={onPay}>Pay now</Button>
         </div>
