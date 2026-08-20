@@ -37,6 +37,16 @@ interface RegisterRequest {
   city?: string;
 }
 
+interface RegisterResponse {
+  success: boolean;
+  data: {
+    requiresVerification: true;
+    email: string;
+    institution: { id: string; slug: string; name: string };
+  };
+  message: string;
+}
+
 export const authApi = baseApi.injectEndpoints({
   endpoints: (builder) => ({
     login: builder.mutation<LoginResponse, LoginRequest>({
@@ -46,8 +56,14 @@ export const authApi = baseApi.injectEndpoints({
         body: credentials,
       }),
     }),
-    register: builder.mutation<LoginResponse, RegisterRequest>({
+    register: builder.mutation<RegisterResponse, RegisterRequest>({
       query: (body) => ({ url: '/auth/register', method: 'POST', body }),
+    }),
+    verifyEmail: builder.mutation<void, { token: string }>({
+      query: (body) => ({ url: '/auth/verify-email', method: 'POST', body }),
+    }),
+    resendVerification: builder.mutation<void, { email: string }>({
+      query: (body) => ({ url: '/auth/resend-verification', method: 'POST', body }),
     }),
     logout: builder.mutation<void, void>({
       query: () => ({ url: '/auth/logout', method: 'POST' }),
@@ -80,6 +96,8 @@ export const authApi = baseApi.injectEndpoints({
 export const {
   useLoginMutation,
   useRegisterMutation,
+  useVerifyEmailMutation,
+  useResendVerificationMutation,
   useLogoutMutation,
   useForgotPasswordMutation,
   useResetPasswordMutation,

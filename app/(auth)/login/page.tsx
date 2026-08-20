@@ -6,8 +6,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useRouter } from 'next/navigation';
-import { Eye, EyeOff, Phone, Lock, AlertCircle } from 'lucide-react';
-import { useLoginMutation } from '@/store/api/authApi';
+import { Eye, EyeOff, Phone, Lock, AlertCircle, MailWarning } from 'lucide-react';
+import { useLoginMutation, useResendVerificationMutation } from '@/store/api/authApi';
 import { useAppDispatch } from '@/store/hooks';
 import { setCredentials } from '@/store/slices/authSlice';
 import toast from 'react-hot-toast';
@@ -28,7 +28,10 @@ export default function LoginPage() {
   const dispatch = useAppDispatch();
   const [showPassword, setShowPassword] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [needsVerification, setNeedsVerification] = useState(false);
+  const [resendEmail, setResendEmail] = useState('');
   const [login, { isLoading }] = useLoginMutation();
+  const [resendVerification, { isLoading: resending }] = useResendVerificationMutation();
 
   const {
     register,
@@ -41,18 +44,34 @@ export default function LoginPage() {
 
   const onSubmit = async (data: LoginForm) => {
     setFormError(null);
+    setNeedsVerification(false);
     try {
       const result = await login(data).unwrap();
       dispatch(setCredentials({ user: result.data.user, accessToken: result.data.accessToken }));
       toast.success(`Welcome back, ${result.data.user.firstName}!`);
       router.push(roleHome(result.data.user.role));
     } catch (error: any) {
+      if (error?.data?.error?.code === 'EMAIL_NOT_VERIFIED') {
+        setNeedsVerification(true);
+        setFormError(error.data.error.message);
+        return;
+      }
       const message =
         error?.data?.error?.message ||
         (error?.status === 'FETCH_ERROR'
           ? 'Cannot reach the server. Please try again.'
           : 'Invalid phone number or password.');
       setFormError(message);
+    }
+  };
+
+  const onResend = async () => {
+    if (!resendEmail.trim()) { toast.error('Enter the email you registered with'); return; }
+    try {
+      await resendVerification({ email: resendEmail.trim() }).unwrap();
+      toast.success('Verification email sent — check your inbox.');
+    } catch {
+      toast.error('Could not resend the email. Please try again in a moment.');
     }
   };
 
@@ -65,13 +84,38 @@ export default function LoginPage() {
         </p>
       </div>
 
-      {formError && (
+      {formError && !needsVerification && (
         <div
           role="alert"
           className="mb-5 flex items-start gap-2.5 rounded-lg border border-danger/30 bg-danger-soft px-3.5 py-3 text-sm text-danger"
         >
           <AlertCircle size={17} className="mt-0.5 shrink-0" />
           <span>{formError}</span>
+        </div>
+      )}
+
+      {needsVerification && (
+        <div
+          role="alert"
+          className="mb-5 space-y-2.5 rounded-lg border border-warning/30 bg-warning-soft px-3.5 py-3 text-sm text-warning"
+        >
+          <div className="flex items-start gap-2.5">
+            <MailWarning size={17} className="mt-0.5 shrink-0" />
+            <span>{formError}</span>
+          </div>
+          <div className="flex gap-2">
+            <input
+              type="email"
+              value={resendEmail}
+              onChange={(e) => setResendEmail(e.target.value)}
+              placeholder="Your registered email"
+              dir="ltr"
+              className="h-9 flex-1 rounded-md border border-warning/30 bg-card px-2.5 text-xs text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            />
+            <Button type="button" size="sm" variant="secondary" loading={resending} onClick={onResend}>
+              Resend
+            </Button>
+          </div>
         </div>
       )}
 

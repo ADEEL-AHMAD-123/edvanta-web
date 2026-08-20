@@ -94,15 +94,19 @@ export interface DisputedPayment {
   createdAt: string;
 }
 
+export type NeedsReviewSource = 'checkout_autosettle' | 'verify_poll' | 'webhook' | 'bank_transfer_confirm' | 'auto_renewal';
+
 export interface NeedsReviewPayment {
   institutionId: string;
   institutionName: string;
   paymentId: string;
   amount: number;
   gateway: string;
+  gatewayTxnId: string | null;
   reference: string | null;
   status: string;
   reviewNote: string | null;
+  reviewSource: NeedsReviewSource | null;
   resolved: boolean;
   resolvedAt: string | null;
   createdAt: string;

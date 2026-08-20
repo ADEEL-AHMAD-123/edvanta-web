@@ -11,13 +11,27 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   Table, TableWrapper, TableHeader, TableBody, TableRow, TableHead, TableCell,
 } from '@/components/ui/table';
-import { formatCurrency, formatDate } from '@/lib/utils';
+import { formatCurrency, formatDateTime } from '@/lib/utils';
 import {
   useGetPendingPaymentsQuery, useGetDisputedPaymentsQuery, useResolveDisputeMutation,
   useConfirmPaymentMutation, useRejectPaymentMutation,
   useGetNeedsReviewPaymentsQuery, useResolveNeedsReviewMutation,
+  type NeedsReviewSource,
 } from '@/store/api/billingApi';
 import { useUpdateInstitutionMutation } from '@/store/api/superadminApi';
+
+// Plain-English label for where a "needs review" flag came from — shown as a
+// badge so a row that appears with no obvious trigger (e.g. a superadmin
+// clicking Confirm on a stale pending row) has a visible origin instead of
+// just an unexplained note. Keep in sync with markPaymentNeedsReview()'s
+// `source` values in billing.service.ts.
+const REVIEW_SOURCE_LABEL: Record<NeedsReviewSource, string> = {
+  checkout_autosettle: 'Checkout (auto-settle)',
+  verify_poll: 'Checkout return page',
+  webhook: 'Gateway webhook',
+  bank_transfer_confirm: 'Superadmin confirm click',
+  auto_renewal: 'Auto-renewal cron',
+};
 
 export function PendingPaymentsView() {
   const { data, isLoading } = useGetPendingPaymentsQuery();
@@ -102,8 +116,8 @@ export function PendingPaymentsView() {
                     <TableCell className="font-medium text-foreground">{formatCurrency(r.amount)}</TableCell>
                     <TableCell><Badge variant="neutral" className="capitalize">{r.gateway}</Badge></TableCell>
                     <TableCell className="max-w-[140px] truncate text-muted-foreground" title={r.reference ?? ''}>{r.reference ?? '—'}</TableCell>
-                    <TableCell className="whitespace-nowrap text-xs text-muted-foreground">{formatDate(r.createdAt)}</TableCell>
-                    <TableCell className="max-w-[240px] truncate text-xs text-muted-foreground" title={r.disputeNote ?? ''}>{r.disputeNote ?? '—'}</TableCell>
+                    <TableCell className="whitespace-nowrap text-xs text-muted-foreground">{formatDateTime(r.createdAt)}</TableCell>
+                    <TableCell className="max-w-[240px] whitespace-normal text-xs text-muted-foreground">{r.disputeNote ?? '—'}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
                         <Button size="sm" variant="ghost" disabled={suspending} onClick={() => onSuspend(r.institutionId, r.institutionName)}>
@@ -139,8 +153,9 @@ export function PendingPaymentsView() {
                   <TableHead>Amount</TableHead>
                   <TableHead>Method</TableHead>
                   <TableHead>Reference</TableHead>
+                  <TableHead>Flagged from</TableHead>
                   <TableHead>Reported</TableHead>
-                  <TableHead>Note</TableHead>
+                  <TableHead>Why it's here</TableHead>
                   <TableHead />
                 </TableRow>
               </TableHeader>
@@ -150,9 +165,10 @@ export function PendingPaymentsView() {
                     <TableCell className="font-medium text-foreground">{r.institutionName}</TableCell>
                     <TableCell className="font-medium text-foreground">{formatCurrency(r.amount)}</TableCell>
                     <TableCell><Badge variant="neutral" className="capitalize">{r.gateway}</Badge></TableCell>
-                    <TableCell className="max-w-[140px] truncate text-muted-foreground" title={r.reference ?? ''}>{r.reference ?? '—'}</TableCell>
-                    <TableCell className="whitespace-nowrap text-xs text-muted-foreground">{formatDate(r.createdAt)}</TableCell>
-                    <TableCell className="max-w-[280px] truncate text-xs text-muted-foreground" title={r.reviewNote ?? ''}>{r.reviewNote ?? '—'}</TableCell>
+                    <TableCell className="max-w-[140px] truncate text-muted-foreground" title={r.gatewayTxnId ? `${r.reference ?? '—'} (gateway txn ${r.gatewayTxnId})` : (r.reference ?? '')}>{r.reference ?? '—'}</TableCell>
+                    <TableCell><Badge variant="outline" className="whitespace-nowrap">{r.reviewSource ? REVIEW_SOURCE_LABEL[r.reviewSource] : 'Unknown'}</Badge></TableCell>
+                    <TableCell className="whitespace-nowrap text-xs text-muted-foreground">{formatDateTime(r.createdAt)}</TableCell>
+                    <TableCell className="max-w-[320px] whitespace-normal text-xs text-muted-foreground">{r.reviewNote ?? '—'}</TableCell>
                     <TableCell className="text-right">
                       <Button size="sm" variant="soft" disabled={resolvingReview} onClick={() => onResolveReview(r.institutionId, r.paymentId)}>
                         <CheckCircle2 size={14} /> Mark reviewed
@@ -193,7 +209,7 @@ export function PendingPaymentsView() {
                     <TableCell className="font-medium text-foreground">{formatCurrency(r.amount)}</TableCell>
                     <TableCell><Badge variant="neutral" className="capitalize">{r.gateway}</Badge></TableCell>
                     <TableCell className="max-w-[160px] truncate text-muted-foreground" title={r.reference ?? ''}>{r.reference ?? '—'}</TableCell>
-                    <TableCell className="whitespace-nowrap text-xs text-muted-foreground">{formatDate(r.createdAt)}</TableCell>
+                    <TableCell className="whitespace-nowrap text-xs text-muted-foreground">{formatDateTime(r.createdAt)}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-1">
                         <Button size="sm" variant="soft" disabled={busy} onClick={() => onConfirm(r.institutionId, r.paymentId)}><CheckCircle2 size={15} /> Confirm</Button>

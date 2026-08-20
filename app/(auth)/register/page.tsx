@@ -5,13 +5,10 @@ import Link from 'next/link';
 import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useRouter } from 'next/navigation';
 import {
-  Eye, EyeOff, Building2, User, Phone, Mail, Lock, AlertCircle, Check,
+  Eye, EyeOff, Building2, User, Phone, Mail, Lock, AlertCircle, Check, MailCheck,
 } from 'lucide-react';
-import { useRegisterMutation } from '@/store/api/authApi';
-import { useAppDispatch } from '@/store/hooks';
-import { setCredentials } from '@/store/slices/authSlice';
+import { useRegisterMutation, useResendVerificationMutation } from '@/store/api/authApi';
 import toast from 'react-hot-toast';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
@@ -52,11 +49,11 @@ const fieldCls = (err?: boolean) =>
   );
 
 export default function RegisterPage() {
-  const router = useRouter();
-  const dispatch = useAppDispatch();
   const [showPassword, setShowPassword] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [registeredEmail, setRegisteredEmail] = useState<string | null>(null);
   const [registerInstitution, { isLoading }] = useRegisterMutation();
+  const [resendVerification, { isLoading: resending }] = useResendVerificationMutation();
 
   const {
     register,
@@ -77,9 +74,7 @@ export default function RegisterPage() {
     setFormError(null);
     try {
       const result = await registerInstitution(data).unwrap();
-      dispatch(setCredentials({ user: result.data.user, accessToken: result.data.accessToken }));
-      toast.success('Welcome to Edvanta! Your 14-day trial has started.');
-      router.push('/admin');
+      setRegisteredEmail(result.data.email);
     } catch (error: any) {
       setFormError(
         error?.data?.error?.message ||
@@ -89,6 +84,44 @@ export default function RegisterPage() {
       );
     }
   };
+
+  const onResend = async () => {
+    if (!registeredEmail) return;
+    try {
+      await resendVerification({ email: registeredEmail }).unwrap();
+      toast.success('Verification email sent again — check your inbox.');
+    } catch {
+      toast.error('Could not resend the email. Please try again in a moment.');
+    }
+  };
+
+  // Registration succeeded — the account exists but is unverified, and the
+  // backend no longer issues a session for it (see auth.service.ts's
+  // register()). Show a "check your email" screen instead of redirecting
+  // into the dashboard; there's nothing to redirect INTO until they verify.
+  if (registeredEmail) {
+    return (
+      <div className="text-center">
+        <span className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary-soft text-primary-soft-foreground">
+          <MailCheck size={26} />
+        </span>
+        <h1 className="text-2xl font-bold tracking-tight text-foreground">Check your email</h1>
+        <p className="mx-auto mt-2 max-w-xs text-sm text-muted-foreground">
+          We&apos;ve sent a verification link to <span className="font-medium text-foreground">{registeredEmail}</span>.
+          Click it to activate your account before logging in.
+        </p>
+        <Button variant="secondary" className="mt-6" loading={resending} onClick={onResend}>
+          Resend email
+        </Button>
+        <p className="mt-6 text-sm text-muted-foreground">
+          Already verified?{' '}
+          <Link href="/login" className="font-medium text-primary hover:underline">
+            Sign in
+          </Link>
+        </p>
+      </div>
+    );
+  }
 
   return (
     <div>
