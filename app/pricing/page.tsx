@@ -72,13 +72,13 @@ export default function PricingPage() {
                 <ul className="mt-5 flex-1 space-y-2.5">
                   {p.features.map((feat) => (
                     <li key={feat} className="flex items-start gap-2 text-sm">
-                      <Check size={16} className="mt-0.5 shrink-0 text-success" /> <span>{feat}</span>
+                      <Check aria-hidden size={16} className="mt-0.5 shrink-0 text-success" /> <span>{feat}</span>
                     </li>
                   ))}
                 </ul>
                 <Link
                   href={p.name === 'Institution' ? '/contact' : '/register'}
-                  className={`${buttonVariants({ variant: p.highlight ? 'primary' : 'secondary' })} mt-6 w-full ${p.highlight ? 'bg-accent text-accent-foreground hover:bg-accent/90' : ''}`}
+                  className={`${buttonVariants({ variant: p.highlight ? 'primary' : 'secondary' })} mt-6 w-full ${p.highlight ? '!bg-accent !text-accent-foreground hover:!bg-accent/90' : ''}`}
                 >
                   {p.cta}
                 </Link>
@@ -112,8 +112,8 @@ export default function PricingPage() {
         <div className="relative mx-auto max-w-4xl px-5 text-center">
           <h2 className="text-3xl font-bold tracking-tight">Ready to modernise your institution?</h2>
           <p className="mx-auto mt-3 max-w-xl text-sidebar-muted">Create your account and start your free trial today — no card required.</p>
-          <Link href="/register" className={`${buttonVariants({ size: 'lg' })} mt-7 bg-accent text-accent-foreground hover:bg-accent/90`}>
-            Start free trial <ArrowRight size={18} />
+          <Link href="/register" className={`${buttonVariants({ size: 'lg' })} mt-7 !bg-accent !text-accent-foreground hover:!bg-accent/90`}>
+            Start free trial <ArrowRight aria-hidden size={18} />
           </Link>
         </div>
       </section>

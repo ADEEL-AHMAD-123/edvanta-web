@@ -30,11 +30,20 @@ export const metadata: Metadata = {
     title: 'Marksly — School & Campus Management Software for Pakistan',
     description: DEFAULT_DESCRIPTION,
     locale: 'en_PK',
+    images: [
+      {
+        url: '/og-image.png',
+        width: 1200,
+        height: 630,
+        alt: 'Marksly — School & Campus Management Software for Pakistan',
+      },
+    ],
   },
   twitter: {
     card: 'summary_large_image',
     title: 'Marksly — School & Campus Management Software for Pakistan',
     description: DEFAULT_DESCRIPTION,
+    images: ['/og-image.png'],
   },
   robots: { index: true, follow: true },
 };

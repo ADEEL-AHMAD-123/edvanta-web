@@ -51,7 +51,7 @@ export default function FeaturesPage() {
             {FEATURES.map((f, i) => (
               <div key={f.title} className="rounded-xl border border-border bg-card p-5 shadow-sm transition-shadow hover:shadow-md">
                 <span className={`inline-flex h-10 w-10 items-center justify-center rounded-lg ${i % 2 === 0 ? 'bg-primary-soft text-primary' : 'bg-accent/15 text-accent-foreground'}`}>
-                  <f.icon size={20} />
+                  <f.icon aria-hidden size={20} />
                 </span>
                 <h2 className="mt-4 font-semibold">{f.title}</h2>
                 <p className="mt-1.5 text-sm text-muted-foreground">{f.desc}</p>
@@ -87,7 +87,7 @@ export default function FeaturesPage() {
             <h2 className="text-3xl font-bold tracking-tight">See it in action</h2>
             <p className="mx-auto mt-3 max-w-xl text-muted-foreground">Create your account and start your free trial today — no card required.</p>
             <Link href="/register" className={`${buttonVariants({ size: 'lg' })} mt-7`}>
-              Start free trial <ArrowRight size={18} />
+              Start free trial <ArrowRight aria-hidden size={18} />
             </Link>
           </div>
         </div>

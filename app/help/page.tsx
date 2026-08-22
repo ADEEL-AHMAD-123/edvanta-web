@@ -94,10 +94,10 @@ export default function HelpPage() {
           </p>
           <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
             <a href="mailto:support@marksly.pk" className={`${buttonVariants({ variant: 'secondary' })} w-full sm:w-auto`}>
-              <Mail size={16} /> Email support
+              <Mail aria-hidden size={16} /> Email support
             </a>
-            <Link href="/contact" className={`${buttonVariants()} w-full sm:w-auto bg-accent text-accent-foreground hover:bg-accent/90`}>
-              <MessageCircle size={16} /> Contact us <ArrowRight size={16} />
+            <Link href="/contact" className={`${buttonVariants()} w-full sm:w-auto !bg-accent !text-accent-foreground hover:!bg-accent/90`}>
+              <MessageCircle aria-hidden size={16} /> Contact us <ArrowRight aria-hidden size={16} />
             </Link>
           </div>
         </div>

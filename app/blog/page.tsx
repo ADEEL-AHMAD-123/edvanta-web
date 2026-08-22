@@ -42,7 +42,7 @@ export default function BlogIndexPage() {
               <h2 className="mt-2 text-xl font-semibold group-hover:text-primary">{post.title}</h2>
               <p className="mt-2 text-sm text-muted-foreground">{post.description}</p>
               <span className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-accent-foreground">
-                Read more <ArrowRight size={14} />
+                Read more <ArrowRight aria-hidden size={14} />
               </span>
             </Link>
           ))}

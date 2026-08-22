@@ -13,15 +13,16 @@ export function PageHero({
 }) {
   return (
     <section className="relative overflow-hidden">
-      <div aria-hidden className="pointer-events-none absolute -right-32 -top-32 h-96 w-96 rounded-full bg-primary opacity-10 blur-3xl" />
-      <div aria-hidden className="pointer-events-none absolute -left-24 top-10 h-64 w-64 rounded-full bg-accent opacity-10 blur-3xl" />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-72 opacity-[0.07]"
+        style={{ background: 'radial-gradient(50% 60% at 75% 0%, hsl(var(--primary)) 0%, transparent 70%)' }}
+      />
       <div className={`mx-auto ${size === 'lg' ? 'max-w-3xl' : 'max-w-2xl'} px-5 ${size === 'lg' ? 'py-20 md:py-28' : 'py-16 md:py-20'} text-center`}>
         {eyebrow && (
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-accent/30 bg-accent/10 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-accent-foreground">
-            <span className="h-1.5 w-1.5 rounded-full bg-accent" /> {eyebrow}
-          </span>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent-foreground">{eyebrow}</p>
         )}
-        <h1 className={`mx-auto mt-5 font-bold tracking-tight text-foreground ${size === 'lg' ? 'text-4xl md:text-6xl' : 'text-4xl md:text-5xl'}`}>
+        <h1 className={`mx-auto mt-4 font-bold tracking-tight text-foreground ${size === 'lg' ? 'text-4xl md:text-6xl' : 'text-4xl md:text-5xl'}`}>
           {title}
         </h1>
         {/* Gold accent underline — small, deliberate brand marker under every page's H1 */}

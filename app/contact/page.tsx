@@ -48,13 +48,13 @@ export default function ContactPage() {
               className="group flex flex-col rounded-2xl border border-border bg-card p-6 shadow-sm transition-all hover:-translate-y-0.5 hover:border-primary hover:shadow-md"
             >
               <span className={`inline-flex h-11 w-11 items-center justify-center rounded-lg ${i % 2 === 0 ? 'bg-primary-soft text-primary' : 'bg-accent/15 text-accent-foreground'}`}>
-                <c.icon size={22} />
+                <c.icon aria-hidden size={22} />
               </span>
               <h2 className="mt-4 text-lg font-semibold">{c.title}</h2>
               <p className="mt-1 font-medium text-primary">{c.detail}</p>
               <p className="mt-2 text-sm text-muted-foreground">{c.note}</p>
               <span className="mt-4 inline-flex items-center gap-1 text-sm font-medium text-accent-foreground opacity-0 transition-opacity group-hover:opacity-100">
-                Reach out <ArrowRight size={14} />
+                Reach out <ArrowRight aria-hidden size={14} />
               </span>
             </a>
           ))}

@@ -24,6 +24,7 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
       title: post.title,
       description: post.description,
       publishedTime: post.date,
+      images: [{ url: '/og-image.png', width: 1200, height: 630, alt: post.title }],
     },
   };
 }
@@ -39,7 +40,7 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
 
       <article className="mx-auto max-w-2xl px-5 py-16">
         <Link href="/blog" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-primary">
-          <ArrowLeft size={14} /> Back to blog
+          <ArrowLeft aria-hidden size={14} /> Back to blog
         </Link>
 
         <p className="mt-6 text-xs font-semibold uppercase tracking-wide text-accent">
@@ -71,8 +72,8 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
           <p className="mx-auto mt-2 max-w-md text-sidebar-muted">
             Start free — no card required, set up in minutes.
           </p>
-          <Link href="/register" className={`${buttonVariants({ size: 'lg' })} mt-6 bg-accent text-accent-foreground hover:bg-accent/90`}>
-            Start free trial <ArrowRight size={18} />
+          <Link href="/register" className={`${buttonVariants({ size: 'lg' })} mt-6 !bg-accent !text-accent-foreground hover:!bg-accent/90`}>
+            Start free trial <ArrowRight aria-hidden size={18} />
           </Link>
         </div>
       </section>
