@@ -20,15 +20,15 @@ export function PageHero({
       />
       <div className={`mx-auto ${size === 'lg' ? 'max-w-3xl' : 'max-w-2xl'} px-5 ${size === 'lg' ? 'py-20 md:py-28' : 'py-16 md:py-20'} text-center`}>
         {eyebrow && (
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent-foreground">{eyebrow}</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">{eyebrow}</p>
         )}
-        <h1 className={`mx-auto mt-4 font-bold tracking-tight text-foreground ${size === 'lg' ? 'text-4xl md:text-6xl' : 'text-4xl md:text-5xl'}`}>
+        <h1 className={`mx-auto mt-4 font-bold tracking-tight text-foreground ${size === 'lg' ? 'text-3xl sm:text-4xl md:text-6xl' : 'text-3xl sm:text-4xl md:text-5xl'}`}>
           {title}
         </h1>
         {/* Gold accent underline — small, deliberate brand marker under every page's H1 */}
         <span aria-hidden className="mx-auto mt-5 block h-1 w-14 rounded-full bg-accent" />
         {description && (
-          <p className="mx-auto mt-5 max-w-xl text-lg text-muted-foreground">{description}</p>
+          <p className="mx-auto mt-5 max-w-xl text-base text-muted-foreground sm:text-lg">{description}</p>
         )}
       </div>
     </section>

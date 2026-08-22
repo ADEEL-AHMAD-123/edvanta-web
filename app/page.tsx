@@ -78,16 +78,25 @@ function MarqueeRow({ items, direction }: { items: Institution[]; direction: 'le
   const track = [...items, ...items]; // duplicated for seamless loop
   return (
     <div className="marquee-track relative overflow-hidden">
-      <div aria-hidden className="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-gradient-to-r from-[hsl(36,26%,92%)] to-transparent sm:w-28" />
-      <div aria-hidden className="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 bg-gradient-to-l from-[hsl(36,26%,92%)] to-transparent sm:w-28" />
-      <div className={`flex w-max items-center gap-12 ${direction === 'left' ? 'animate-marquee-left' : 'animate-marquee-right'}`}>
-        {track.map((inst, i) => (
-          <div key={`${inst.name}-${i}`} className="flex shrink-0 items-center gap-3">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={inst.logo} alt={inst.name} width={52} height={52} className="h-[52px] w-[52px] shrink-0 rounded-full shadow-sm" />
-            <p className="whitespace-nowrap text-sm font-semibold leading-none text-foreground">{inst.name}</p>
-          </div>
-        ))}
+      <div aria-hidden className="pointer-events-none absolute inset-y-0 left-0 z-10 w-10 bg-gradient-to-r from-[hsl(36,26%,92%)] to-transparent sm:w-28" />
+      <div aria-hidden className="pointer-events-none absolute inset-y-0 right-0 z-10 w-10 bg-gradient-to-l from-[hsl(36,26%,92%)] to-transparent sm:w-28" />
+      <div className={`flex w-max items-center gap-6 sm:gap-12 ${direction === 'left' ? 'animate-marquee-left' : 'animate-marquee-right'}`}>
+        {track.map((inst, i) => {
+          const isDuplicate = i >= items.length; // second half exists only for the seamless loop
+          return (
+            <div key={`${inst.name}-${i}`} aria-hidden={isDuplicate} className="flex shrink-0 items-center gap-2 sm:gap-3">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={inst.logo}
+                alt={isDuplicate ? '' : inst.name}
+                width={52}
+                height={52}
+                className="h-9 w-9 shrink-0 rounded-full shadow-sm sm:h-[52px] sm:w-[52px]"
+              />
+              <p className="whitespace-nowrap text-xs font-semibold leading-none text-foreground sm:text-sm">{inst.name}</p>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -113,7 +122,7 @@ export default function LandingPage() {
         <div className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-14 px-5 pb-16 pt-16 md:pb-24 md:pt-24 lg:grid-cols-[1.1fr_1fr]">
           {/* Left: copy */}
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent-foreground">
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">
               Marksly for Pakistan
             </p>
             <h1 className="mt-4 text-4xl font-bold leading-[1.1] tracking-tight sm:text-5xl sm:leading-[1.05] md:text-6xl">
@@ -203,29 +212,39 @@ export default function LandingPage() {
             {/* floating accent chip — small, deliberate depth cue */}
             <div className="absolute -bottom-5 -left-5 hidden rounded-xl border border-accent/30 bg-card px-4 py-3 shadow-lg sm:block">
               <p className="text-[11px] text-muted-foreground">Time saved weekly</p>
-              <p className="text-lg font-bold text-accent-foreground">6+ hours</p>
+              <p className="text-lg font-bold text-accent">6+ hours</p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* ── Differentiator strip — editorial numbered row, not cards ───── */}
+      {/* ── Differentiator strip — real cards with a headline, not a bare
+           numbered text row ──────────────────────────────────────────── */}
       <section className="border-y border-border bg-accent/10">
-        <div className="mx-auto max-w-6xl px-5 py-12 sm:py-16">
-          <p className="text-xs font-semibold uppercase tracking-wide text-accent">Why Marksly</p>
+        <div className="mx-auto max-w-6xl px-5 py-14 sm:py-16">
+          <div className="mx-auto max-w-xl text-center">
+            <p className="text-xs font-semibold uppercase tracking-wide text-accent">Why Marksly</p>
+            <h2 className="mt-2 text-3xl font-bold tracking-tight md:text-4xl">Built differently, for Pakistan</h2>
+          </div>
 
-          <div className="mt-6 grid grid-cols-1 gap-8 sm:mt-8 md:grid-cols-3 md:gap-8">
-            {DIFFERENTIATORS.map((d, i) => (
-              <div key={d.n} className={i > 0 ? 'border-t border-border pt-6 md:border-t-0 md:pt-0' : ''}>
-                <div className="flex items-center gap-3">
-                  <span className="text-sm font-bold text-accent">{d.n}</span>
-                  <span className="h-px flex-1 bg-border" />
-                  <d.icon aria-hidden size={16} className="text-primary" />
+          {/* connected roadmap — numbered nodes linked by a line, read left-to-right
+              as a sequence rather than three unrelated cards */}
+          <div className="relative mt-12 sm:mt-16">
+            <div aria-hidden className="absolute left-[22px] top-3 bottom-3 w-px bg-primary/15 md:left-0 md:right-0 md:top-[22px] md:bottom-auto md:h-px md:w-auto" />
+
+            <div className="relative grid grid-cols-1 gap-10 md:grid-cols-3 md:gap-8">
+              {DIFFERENTIATORS.map((d) => (
+                <div key={d.n} className="relative flex gap-4 md:flex-col md:items-center md:text-center">
+                  <div className="relative z-10 flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary text-sm font-bold text-primary-foreground shadow-md">
+                    {d.n}
+                  </div>
+                  <div className="pt-1 md:pt-0">
+                    <h3 className="text-lg font-semibold md:mt-5">{d.title}</h3>
+                    <p className="mt-1.5 max-w-[240px] text-sm leading-relaxed text-muted-foreground md:mx-auto">{d.desc}</p>
+                  </div>
                 </div>
-                <h3 className="mt-4 text-lg font-semibold">{d.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{d.desc}</p>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
       </section>
@@ -243,18 +262,22 @@ export default function LandingPage() {
             </p>
           </div>
 
-          <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-6">
-            <div className="relative overflow-hidden rounded-2xl border border-border bg-sidebar p-5 text-sidebar-foreground sm:p-6 md:col-span-4 md:row-span-2">
-              <span className="inline-flex h-10 w-10 items-center justify-center rounded-xl bg-accent/15 text-accent">
-                <Wallet aria-hidden size={20} />
-              </span>
-              <h3 className="mt-4 text-xl font-bold">Fees &amp; billing, fully automated</h3>
-              <p className="mt-1.5 max-w-md text-sm text-sidebar-muted">
-                Fee structures, monthly auto-billing, discounts and fines, receipts, dues tracking —
-                and optional auto-renewal so subscription payments never slip through the cracks.
+          <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-6 md:gap-4">
+            {/* Hero card — attendance, the daily-use core of the system,
+                not a billing feature */}
+            <div className="relative col-span-2 overflow-hidden rounded-2xl border border-border bg-sidebar p-5 text-sidebar-foreground sm:p-6 md:col-span-4 md:row-span-2">
+              <div className="flex items-center gap-3">
+                <span className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent/15 text-accent">
+                  <CalendarCheck aria-hidden size={20} />
+                </span>
+                <h3 className="text-lg font-bold sm:text-xl">Attendance, made effortless</h3>
+              </div>
+              <p className="mt-3 max-w-md text-sm text-sidebar-muted">
+                Teachers mark attendance in seconds from any device. Admins get live, class-wise
+                rates instantly — no more chasing paper registers at the end of the day.
               </p>
               <div className="mt-4 flex flex-wrap gap-1.5">
-                {['Invoices', 'Auto-renewal', 'JazzCash', 'EasyPaisa', 'Bank transfer'].map((t) => (
+                {['One-tap marking', 'Daily reports', 'Absentee alerts', 'Class & section wise'].map((t) => (
                   <span key={t} className="rounded-full border border-sidebar-border bg-sidebar-accent/50 px-2.5 py-0.5 text-xs">{t}</span>
                 ))}
               </div>
@@ -262,73 +285,96 @@ export default function LandingPage() {
 
             {[
               { icon: GraduationCap, title: 'Student records', desc: 'Admissions, profiles, classes and sections with bulk CSV import.' },
-              { icon: CalendarCheck, title: 'Attendance', desc: 'Teachers mark classes in seconds; admins see rates instantly.' },
-              { icon: FileText, title: 'Exams & results', desc: 'Fast marks entry, published straight to students and parents.' },
-              { icon: CalendarClock, title: 'Timetable', desc: 'Weekly schedules per section, with one-tap attendance.' },
+              { icon: CalendarClock, title: 'Timetable', desc: 'Weekly schedules per section, built and shared in minutes.' },
               { icon: Users, title: 'Teachers', desc: 'Staff profiles, class assignments, and workload at a glance.' },
+              { icon: CreditCard, title: 'ID cards & reports', desc: 'Printable QR ID cards, plus live dashboards across every module.' },
             ].map((f) => (
-              <div key={f.title} className="rounded-2xl border border-border bg-card p-4 transition-shadow hover:shadow-md sm:p-5 md:col-span-2">
-                <div className="flex items-center gap-2.5">
-                  <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary-soft text-primary">
-                    <f.icon aria-hidden size={16} />
+              <div key={f.title} className="rounded-2xl border border-border bg-card p-3.5 transition-shadow hover:shadow-md sm:p-5 md:col-span-2">
+                <div className="flex items-center gap-2 sm:gap-2.5">
+                  <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary-soft text-primary sm:h-8 sm:w-8">
+                    <f.icon aria-hidden size={15} className="sm:hidden" />
+                    <f.icon aria-hidden size={16} className="hidden sm:block" />
                   </span>
-                  <h3 className="text-sm font-semibold">{f.title}</h3>
+                  <h3 className="text-xs font-semibold sm:text-sm">{f.title}</h3>
                 </div>
-                <p className="mt-2 text-xs leading-relaxed text-muted-foreground">{f.desc}</p>
+                <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground sm:mt-2 sm:text-xs">{f.desc}</p>
               </div>
             ))}
 
-            <div className="rounded-2xl border border-accent/30 bg-accent/10 p-4 sm:p-5 md:col-span-3">
+            {/* fifth "small" card — half-width on mobile so it pairs with Fees
+                in one row; col-span-2 on desktop to complete the exact-fill
+                row3 math (2 + 3×col-span-2 = 6 cols) */}
+            <div className="rounded-2xl border border-border bg-card p-3.5 transition-shadow hover:shadow-md sm:p-5 md:col-span-2">
+              <div className="flex items-center gap-2 sm:gap-2.5">
+                <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary-soft text-primary sm:h-8 sm:w-8">
+                  <MessageSquare aria-hidden size={15} className="sm:hidden" />
+                  <MessageSquare aria-hidden size={16} className="hidden sm:block" />
+                </span>
+                <h3 className="text-xs font-semibold sm:text-sm">WhatsApp &amp; SMS</h3>
+              </div>
+              <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground sm:mt-2 sm:text-xs">Attendance alerts and fee reminders, delivered where parents already are.</p>
+            </div>
+
+            {/* fees — pairs with WhatsApp above on mobile, still a full feature
+                just no longer the flagship card */}
+            <div className="order-1 rounded-2xl border border-border bg-card p-3.5 sm:p-5 md:order-none md:col-span-3">
+              <div className="flex items-center gap-2 sm:gap-2.5">
+                <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-primary-soft text-primary sm:h-8 sm:w-8">
+                  <Wallet aria-hidden size={15} className="sm:hidden" />
+                  <Wallet aria-hidden size={16} className="hidden sm:block" />
+                </span>
+                <h3 className="text-xs font-semibold sm:text-sm">Fees &amp; billing</h3>
+              </div>
+              <p className="mt-1.5 text-[11px] leading-relaxed text-muted-foreground sm:mt-2 sm:text-xs">Fee structures, monthly auto-billing, discounts, receipts and dues tracking.</p>
+            </div>
+
+            {/* second highlight — exams & results, the other core academic
+                reason institutions adopt Marksly */}
+            <div className="order-2 col-span-2 rounded-2xl border border-accent/30 bg-accent/10 p-4 sm:p-5 md:order-none md:col-span-3">
               <div className="flex items-center gap-2.5">
                 <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent text-accent-foreground">
-                  <MessageSquare aria-hidden size={16} />
+                  <FileText aria-hidden size={16} />
                 </span>
-                <h3 className="text-sm font-semibold">WhatsApp &amp; SMS messaging</h3>
+                <h3 className="text-sm font-semibold">Exams &amp; results, simplified</h3>
               </div>
-              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">Attendance alerts, fee reminders and notices — delivered where parents already are, in Urdu or English.</p>
-            </div>
-            <div className="rounded-2xl border border-border bg-card p-4 sm:p-5 md:col-span-3">
-              <div className="flex items-center gap-2.5">
-                <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary-soft text-primary">
-                  <CreditCard aria-hidden size={16} />
-                </span>
-                <h3 className="text-sm font-semibold">ID cards &amp; reports</h3>
-              </div>
-              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">Printable QR ID cards, plus live dashboards across attendance, fees and results.</p>
+              <p className="mt-2 text-xs leading-relaxed text-muted-foreground">Fast marks entry on a grid, auto-calculated grades, and results published straight to students and parents.</p>
             </div>
           </div>
 
-          <Link
-            href="/features"
-            className="group mt-4 flex flex-col items-center justify-between gap-3 rounded-2xl border border-border bg-card p-4 transition-all hover:border-accent hover:shadow-md sm:flex-row sm:p-5"
-          >
-            <div>
-              <p className="text-sm font-semibold">That&apos;s just a taste</p>
-              <p className="text-xs text-muted-foreground">See the full feature list — timetable, ID cards, reports, and more.</p>
-            </div>
-            <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-xs font-medium text-primary-foreground transition-transform group-hover:translate-x-0.5">
-              See all features <ArrowRight aria-hidden size={14} />
-            </span>
-          </Link>
+          <div className="mt-6 flex justify-center sm:mt-4">
+            <Link
+              href="/features"
+              className="group flex flex-col items-center gap-1.5 text-center transition-all sm:flex-row sm:gap-4 sm:rounded-2xl sm:border sm:border-border sm:bg-card sm:px-6 sm:py-4 sm:shadow-sm sm:hover:border-accent sm:hover:shadow-md"
+            >
+              <span className="hidden text-sm font-semibold sm:block">
+                That&apos;s just a taste <span className="font-normal text-muted-foreground">— see the full feature list</span>
+              </span>
+              <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-xs font-semibold leading-none text-primary-foreground transition-transform group-hover:translate-x-0.5">
+                <span className="leading-none">See all features</span>
+                <ArrowRight aria-hidden size={14} className="shrink-0" />
+              </span>
+            </Link>
+          </div>
         </div>
       </section>
 
       {/* ── Trust — institutions using Marksly, as a marquee ─────────────── */}
-      <section className="border-y border-border bg-[hsl(36,26%,92%)] py-16 sm:py-20">
+      <section className="border-y border-border bg-[hsl(36,26%,92%)] pb-16 pt-20 sm:pb-20 sm:pt-24">
         <div className="mx-auto max-w-6xl px-5 text-center">
           <p className="text-xs font-semibold uppercase tracking-wide text-accent">Trusted across Pakistan</p>
-          <h2 className="mt-2 text-3xl font-bold tracking-tight md:text-4xl">Schools and colleges running on Marksly</h2>
+          <h2 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl md:text-4xl">Schools and colleges running on Marksly</h2>
         </div>
 
-        <div className="mt-12 space-y-8">
+        <div className="mt-8 space-y-6 sm:mt-12 sm:space-y-8">
           <MarqueeRow items={SCHOOLS} direction="left" />
           <MarqueeRow items={COLLEGES} direction="right" />
         </div>
+
       </section>
 
       {/* ── Security & data — navy, opens the "trust + commit" zone that
            runs into pricing right below it ─────────────────────────────── */}
-      <section className="bg-sidebar py-14 text-sidebar-foreground">
+      <section className="hidden bg-sidebar py-14 text-sidebar-foreground sm:block">
         <div className="mx-auto max-w-6xl px-5">
           <div className="grid grid-cols-1 divide-y divide-sidebar-border overflow-hidden rounded-2xl border border-sidebar-border sm:grid-cols-2 sm:divide-x sm:divide-y-0 lg:grid-cols-4">
             {[
@@ -353,27 +399,27 @@ export default function LandingPage() {
 
       {/* ── Pricing teaser — continues the navy zone; hairline seam above
            keeps it legible as its own section rather than a blurred merge ── */}
-      <section className="border-t border-sidebar-border bg-sidebar py-20 text-sidebar-foreground">
-        <div className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-10 px-5 lg:grid-cols-2">
+      <section className="border-t border-sidebar-border bg-sidebar py-14 text-sidebar-foreground sm:py-20">
+        <div className="mx-auto grid max-w-6xl grid-cols-1 items-center gap-8 px-5 text-center sm:gap-10 lg:grid-cols-2 lg:text-left">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wide text-accent">Pricing</p>
-            <h2 className="mt-2 text-3xl font-bold tracking-tight md:text-4xl">Simple, fair pricing</h2>
-            <p className="mt-3 max-w-md text-sidebar-muted">
+            <h2 className="mt-2 text-2xl font-bold tracking-tight sm:text-3xl md:text-4xl">Simple, fair pricing</h2>
+            <p className="mx-auto mt-3 max-w-md text-sm text-sidebar-muted sm:text-base lg:mx-0">
               Free for up to 50 students, no card required. Upgrade to Growth as your institution
               grows, or talk to us about a custom plan for multiple campuses.
             </p>
-            <Link href="/pricing" className={`${buttonVariants({ size: 'lg' })} mt-7 !bg-accent !text-accent-foreground hover:!bg-accent/90`}>
+            <Link href="/pricing" className={`${buttonVariants({ size: 'lg' })} mt-6 w-full !bg-accent !text-accent-foreground hover:!bg-accent/90 sm:mt-7 sm:w-auto`}>
               View pricing <ArrowRight aria-hidden size={18} />
             </Link>
           </div>
-          <div className="rounded-2xl border border-sidebar-border bg-sidebar-accent/40 p-6">
+          <div className="rounded-2xl border border-sidebar-border bg-sidebar-accent/40 p-5 text-left sm:p-6">
             <span className="inline-block rounded-full bg-accent px-3 py-1 text-xs font-bold uppercase tracking-wide text-accent-foreground">Most popular</span>
             <p className="mt-4 text-sm text-sidebar-muted">Growth plan</p>
-            <p className="text-3xl font-bold">Rs 2,500<span className="text-base font-normal text-sidebar-muted">/mo</span></p>
-            <ul className="mt-4 space-y-2 text-sm">
+            <p className="text-2xl font-bold sm:text-3xl">Rs 2,500<span className="text-sm font-normal text-sidebar-muted sm:text-base">/mo</span></p>
+            <ul className="mt-4 space-y-2 text-[13px] sm:text-sm">
               {['Up to 300 students', 'Timetable & ID cards', 'SMS & WhatsApp messaging', 'Reports & analytics'].map((f) => (
                 <li key={f} className="flex items-center gap-2">
-                  <Check aria-hidden size={14} className="text-accent" /> {f}
+                  <Check aria-hidden size={14} className="shrink-0 text-accent" /> {f}
                 </li>
               ))}
             </ul>
@@ -384,7 +430,7 @@ export default function LandingPage() {
       {/* ── CTA — light, deliberately breaking the dark run: security →
            pricing → footer are all navy, so this stays light as the
            breathing gap between them, not a fourth dark section ─────────── */}
-      <section className="relative overflow-hidden border-y border-border bg-background py-20">
+      <section className="relative overflow-hidden border-y border-border bg-background py-14 sm:py-20">
         <div
           aria-hidden
           className="pointer-events-none absolute inset-x-0 top-0 h-px"
@@ -396,20 +442,22 @@ export default function LandingPage() {
           style={{ background: 'hsl(var(--accent))' }}
         />
 
-        <div className="relative mx-auto grid max-w-6xl grid-cols-1 items-center gap-10 px-5 lg:grid-cols-[1.2fr_1fr]">
+        <div className="relative mx-auto grid max-w-6xl grid-cols-1 items-center gap-8 px-5 text-center sm:gap-10 lg:grid-cols-[1.2fr_1fr] lg:text-left">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent-foreground">Get started today</p>
-            <h2 className="mt-3 text-3xl font-bold tracking-tight text-foreground md:text-4xl">
-              Ready to modernise your institution?
+            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-accent">Join institutions across Pakistan</p>
+            <h2 className="mt-3 text-2xl font-bold tracking-tight text-foreground sm:text-3xl md:text-4xl">
+              Your institution, running on one system — starting today
             </h2>
-            <p className="mt-3 max-w-lg text-base text-muted-foreground">
-              Create your account and see your first class, fee, and attendance record live in minutes.
+            <p className="mx-auto mt-3 max-w-lg text-sm text-muted-foreground sm:text-base lg:mx-0">
+              Set up your students, classes, and fee structure in one sitting, and see attendance,
+              results, and dues update live from day one.
             </p>
 
-            <div className="mt-6 flex flex-wrap items-center gap-x-6 gap-y-2 text-sm font-medium text-muted-foreground">
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-xs font-semibold text-foreground sm:mt-7 sm:text-sm lg:justify-start">
               {['No card required', 'Setup in under 10 minutes', 'Cancel anytime'].map((r) => (
-                <span key={r} className="inline-flex items-center gap-1.5">
-                  <Check aria-hidden size={14} className="text-success" /> {r}
+                <span key={r} className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap">
+                  <Check aria-hidden size={14} className="shrink-0 text-accent" strokeWidth={3} />
+                  {r}
                 </span>
               ))}
             </div>
@@ -422,7 +470,11 @@ export default function LandingPage() {
             >
               Start free trial <ArrowRight aria-hidden size={18} />
             </Link>
-            <Link href="/contact" className={`${buttonVariants({ variant: 'secondary', size: 'lg' })} w-full justify-center`}>
+            <Link
+              href="/contact"
+              className={`${buttonVariants({ variant: 'outline', size: 'lg' })} w-full justify-center gap-2 border-2`}
+            >
+              <MessageSquare aria-hidden size={16} />
               Talk to us first
             </Link>
           </div>
