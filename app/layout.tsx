@@ -6,13 +6,37 @@ import './globals.css';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
+const SITE_URL = 'https://marksly.pk';
+const DEFAULT_DESCRIPTION =
+  'Marksly is the complete school management platform for academies, schools, colleges and universities in Pakistan — students, attendance, fees, exams, timetable, ID cards and WhatsApp/SMS parent messaging in one place.';
+
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: {
     template: '%s | Marksly',
-    default: 'Marksly — School & Campus Management Software',
+    default: 'Marksly — School & Campus Management Software for Pakistan',
   },
-  description: 'The complete management platform for educational institutions in Pakistan',
-  keywords: ['education ERP', 'institution management', 'academy software', 'college management', 'Pakistan'],
+  description: DEFAULT_DESCRIPTION,
+  keywords: [
+    'school management software Pakistan', 'education ERP Pakistan', 'academy software',
+    'college management system', 'student attendance software', 'school fee management software',
+    'Marksly',
+  ],
+  alternates: { canonical: '/' },
+  openGraph: {
+    type: 'website',
+    siteName: 'Marksly',
+    url: SITE_URL,
+    title: 'Marksly — School & Campus Management Software for Pakistan',
+    description: DEFAULT_DESCRIPTION,
+    locale: 'en_PK',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Marksly — School & Campus Management Software for Pakistan',
+    description: DEFAULT_DESCRIPTION,
+  },
+  robots: { index: true, follow: true },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
