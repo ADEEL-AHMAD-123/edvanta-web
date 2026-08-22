@@ -1,6 +1,6 @@
-# Edvanta Web
+# Marksly Web
 
-Frontend for **Edvanta** — a multi-tenant SaaS school & campus management system for institutions in Pakistan.
+Frontend for **Marksly** — a multi-tenant SaaS school & campus management system for institutions in Pakistan.
 
 Next.js 14 (App Router) · TypeScript · Redux Toolkit + RTK Query · Tailwind (CSS-variable theming).
 
@@ -11,7 +11,7 @@ npm install
 npm run dev
 ```
 
-Set `NEXT_PUBLIC_API_URL` to your Edvanta API base URL (default `http://localhost:5000/api/v1`).
+Set `NEXT_PUBLIC_API_URL` to your Marksly API base URL (default `http://localhost:5000/api/v1`).
 
 ## Build
 

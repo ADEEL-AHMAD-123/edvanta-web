@@ -33,7 +33,7 @@ export function SuperadminDashboard() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Platform Overview" description="Edvanta — all institutions." />
+      <PageHeader title="Platform Overview" description="Marksly — all institutions." />
 
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard label="Institutions" value={ov ? ov.total.toLocaleString('en-PK') : '—'} icon={Building2} tone="primary" delta={ov?.newThisMonth ? `${ov.newThisMonth} new` : undefined} />

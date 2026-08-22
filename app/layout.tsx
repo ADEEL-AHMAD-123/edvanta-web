@@ -8,8 +8,8 @@ const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 
 export const metadata: Metadata = {
   title: {
-    template: '%s | Edvanta',
-    default: 'Edvanta — School & Campus Management Software',
+    template: '%s | Marksly',
+    default: 'Marksly — School & Campus Management Software',
   },
   description: 'The complete management platform for educational institutions in Pakistan',
   keywords: ['education ERP', 'institution management', 'academy software', 'college management', 'Pakistan'],

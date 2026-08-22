@@ -97,7 +97,7 @@ export function InstitutionDetailView({ id }: { id: string }) {
     // dropdown change, since it immediately grants entitlements and
     // changes what the institution is billed for going forward.
     if (!window.confirm(
-      `Change this institution to the "${planType}" plan?\n\nThis is an administrative override — it takes effect immediately and does NOT record a payment. Use this for comp accounts or deals handled outside Edvanta, not as a substitute for the institution actually paying.`
+      `Change this institution to the "${planType}" plan?\n\nThis is an administrative override — it takes effect immediately and does NOT record a payment. Use this for comp accounts or deals handled outside Marksly, not as a substitute for the institution actually paying.`
     )) return;
     try { await update({ id, body: { planType } }).unwrap(); toast.success('Plan updated — no payment was recorded'); }
     catch { toast.error('Could not update plan'); }
@@ -163,10 +163,10 @@ export function InstitutionDetailView({ id }: { id: string }) {
                 <Row label="City" value={inst.city} />
                 <Row label="Province" value={inst.province} />
                 {/* Subdomain routing isn't actually wired up yet (no DNS/middleware
-                    behind it) — showing `slug.edvanta.pk` here looked like a live,
+                    behind it) — showing `slug.marksly.pk` here looked like a live,
                     working link when it isn't. Re-enable once subdomain routing is
                     actually built. */}
-                {/* <Row label="Subdomain" value={`${inst.slug}.edvanta.pk`} /> */}
+                {/* <Row label="Subdomain" value={`${inst.slug}.marksly.pk`} /> */}
               </CardContent>
             </Card>
             <Card>
@@ -364,7 +364,7 @@ export function InstitutionDetailView({ id }: { id: string }) {
                 (see applyPlanToInstitution()'s own comment on the backend)
                 until the institution actually pays through the normal
                 billing flow. Use for comp accounts, correcting a mistake,
-                or honoring a deal negotiated outside Edvanta — not as a
+                or honoring a deal negotiated outside Marksly — not as a
                 substitute for real payment. */}
             <Card className="lg:col-span-3 border-warning/30">
               <CardHeader>

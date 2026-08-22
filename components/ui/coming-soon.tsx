@@ -9,7 +9,7 @@ export function ComingSoon({ title }: { title: string }) {
     <div className="space-y-6">
       <PageHeader
         title={title}
-        description="This section is part of the Edvanta roadmap."
+        description="This section is part of the Marksly roadmap."
         actions={<Badge variant="primary">Coming soon</Badge>}
       />
       <Card>

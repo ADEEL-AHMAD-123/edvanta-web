@@ -49,7 +49,7 @@ export function ForcePasswordChangeGate() {
         newPassword: values.newPassword,
       }).unwrap();
       dispatch(updateUser({ mustChangePassword: false }));
-      toast.success('Password updated — welcome to Edvanta.');
+      toast.success('Password updated — welcome to Marksly.');
     } catch (e: any) {
       toast.error(e?.data?.error?.message || 'Could not change password');
     }

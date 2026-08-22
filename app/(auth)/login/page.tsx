@@ -80,7 +80,7 @@ export default function LoginPage() {
       <div className="mb-7">
         <h1 className="text-2xl font-bold tracking-tight text-foreground">Welcome back</h1>
         <p className="mt-1.5 text-sm text-muted-foreground">
-          Sign in to your Edvanta account to continue.
+          Sign in to your Marksly account to continue.
         </p>
       </div>
 
@@ -195,7 +195,7 @@ export default function LoginPage() {
       </form>
 
       <p className="mt-6 text-center text-sm text-muted-foreground">
-        New to Edvanta?{' '}
+        New to Marksly?{' '}
         <Link href="/register" className="font-medium text-primary hover:underline">
           Create an account
         </Link>
@@ -203,7 +203,7 @@ export default function LoginPage() {
 
       <p className="mt-3 text-center text-xs text-muted-foreground">
         Having trouble?{' '}
-        <a href="mailto:support@edvanta.pk" className="font-medium text-primary hover:underline">
+        <a href="mailto:support@marksly.pk" className="font-medium text-primary hover:underline">
           Contact support
         </a>
       </p>

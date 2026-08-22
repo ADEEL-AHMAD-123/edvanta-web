@@ -35,7 +35,7 @@ export function SidebarNav({ collapsed = false, onNavigate, onToggleCollapsed }:
       >
         <LogoMark size={34} variant="plain" className="shrink-0" />
         {!collapsed && (
-          <span className="text-lg font-bold tracking-tight">Edvanta</span>
+          <span className="text-lg font-bold tracking-tight">Marksly</span>
         )}
       </div>
 

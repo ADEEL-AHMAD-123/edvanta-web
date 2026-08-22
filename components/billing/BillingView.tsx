@@ -202,7 +202,7 @@ export function BillingView() {
   if (isLoading || reconciling) {
     return (
       <div className="space-y-6">
-        <PageHeader title="Billing & Subscription" description="Your Edvanta plan and payments." />
+        <PageHeader title="Billing & Subscription" description="Your Marksly plan and payments." />
         {reconciling && (
           <div className="flex items-center gap-2 rounded-xl border border-primary/30 bg-primary-soft/40 px-4 py-3 text-sm text-primary">
             <RefreshCw size={16} className="animate-spin" /> Confirming your payment with the gateway…
@@ -216,7 +216,7 @@ export function BillingView() {
   if (isError || !b) {
     return (
       <div className="space-y-6">
-        <PageHeader title="Billing & Subscription" description="Your Edvanta plan and payments." />
+        <PageHeader title="Billing & Subscription" description="Your Marksly plan and payments." />
         <Card className="flex flex-col items-center gap-3 p-8 text-center">
           <AlertTriangle size={28} className="text-danger" />
           <p className="text-sm font-medium text-foreground">Couldn't load your billing details</p>
@@ -351,7 +351,7 @@ export function BillingView() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Billing & Subscription" description="Your Edvanta plan and payments." />
+      <PageHeader title="Billing & Subscription" description="Your Marksly plan and payments." />
       <Stepper step={step} />
 
       {step === 'summary' && (
@@ -519,7 +519,7 @@ function SummaryStep({
               <div className="mt-2 flex flex-wrap items-center gap-1.5">
                 <Badge variant={statusBadge[b.status] ?? 'neutral'} className="capitalize">{b.status.replace('_', ' ')}</Badge>
                 {b.planSource === 'admin_override' && (
-                  <Badge variant="warning" title="This plan was granted by Edvanta support — no payment was collected for it.">
+                  <Badge variant="warning" title="This plan was granted by Marksly support — no payment was collected for it.">
                     Granted by support
                   </Badge>
                 )}
@@ -875,7 +875,7 @@ function PaymentStep({
             )}
           </div>
           <p className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-            <ShieldCheck size={12} /> Payments are processed securely by the gateway — Edvanta never sees your card details.
+            <ShieldCheck size={12} /> Payments are processed securely by the gateway — Marksly never sees your card details.
           </p>
         </CardContent>
       </Card>

@@ -14,7 +14,7 @@ export interface ThemeMeta {
 }
 
 export const THEMES: ThemeMeta[] = [
-  { id: 'blue', name: 'Edvanta Navy', swatch: 'hsl(222 47% 28%)' },
+  { id: 'blue', name: 'Marksly Navy', swatch: 'hsl(222 47% 28%)' },
   { id: 'green', name: 'Emerald Green', swatch: 'hsl(158 64% 38%)' },
   { id: 'purple', name: 'Royal Purple', swatch: 'hsl(263 70% 50%)' },
   { id: 'orange', name: 'Sunset Orange', swatch: 'hsl(21 90% 48%)' },
@@ -22,7 +22,7 @@ export const THEMES: ThemeMeta[] = [
 ];
 
 export const DEFAULT_THEME: ThemeId = 'blue';
-export const THEME_STORAGE_KEY = 'edvanta-theme';
+export const THEME_STORAGE_KEY = 'marksly-theme';
 
 export function isValidTheme(value: unknown): value is ThemeId {
   return THEMES.some((t) => t.id === value);

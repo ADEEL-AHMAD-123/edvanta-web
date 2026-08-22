@@ -8,9 +8,9 @@ import { Logo } from '@/components/brand/Logo';
 import { buttonVariants } from '@/components/ui/button-variants';
 
 export const metadata: Metadata = {
-  title: 'Edvanta — School & Campus Management Software',
+  title: 'Marksly — School & Campus Management Software',
   description:
-    'Edvanta is an all-in-one management system for academies, schools, colleges and universities in Pakistan — students, attendance, fees, exams, timetable, ID cards and parent messaging in one place.',
+    'Marksly is an all-in-one management system for academies, schools, colleges and universities in Pakistan — students, attendance, fees, exams, timetable, ID cards and parent messaging in one place.',
 };
 
 const FEATURES = [
@@ -50,7 +50,7 @@ const PLANS = [
 ];
 
 const FAQ = [
-  { q: 'Is Edvanta only for schools?', a: 'No — it works for academies, schools, colleges and universities. The modules and terminology adapt to your institution.' },
+  { q: 'Is Marksly only for schools?', a: 'No — it works for academies, schools, colleges and universities. The modules and terminology adapt to your institution.' },
   { q: 'How are fees handled?', a: 'You manage fee collection your way — generate invoices and record payments (cash, bank, JazzCash, EasyPaisa). Online collection can be enabled too.' },
   { q: 'Do you support WhatsApp and SMS?', a: 'Yes. Connect your provider keys and send announcements and alerts to parents and staff, with a delivery log.' },
   { q: 'Is my data safe?', a: 'Every institution is fully isolated in a multi-tenant architecture with role-based access and encrypted sessions.' },
@@ -66,7 +66,7 @@ export default function LandingPage() {
           <Logo size={30} />
           <nav className="hidden items-center gap-7 text-sm font-medium text-muted-foreground md:flex">
             <a href="#features" className="hover:text-foreground">Features</a>
-            <a href="#pakistan" className="hover:text-foreground">Why Edvanta</a>
+            <a href="#pakistan" className="hover:text-foreground">Why Marksly</a>
             <a href="#pricing" className="hover:text-foreground">Pricing</a>
             <a href="#faq" className="hover:text-foreground">FAQ</a>
           </nav>
@@ -88,7 +88,7 @@ export default function LandingPage() {
             Run your entire institution in one place
           </h1>
           <p className="mx-auto mt-5 max-w-2xl text-lg text-muted-foreground">
-            Edvanta brings students, attendance, fees, exams, timetable, ID cards and parent
+            Marksly brings students, attendance, fees, exams, timetable, ID cards and parent
             messaging together — so your team spends less time on paperwork and more time teaching.
           </p>
           <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
@@ -225,11 +225,11 @@ export default function LandingPage() {
       <footer className="border-t border-border py-10">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 px-5 sm:flex-row">
           <Logo size={26} />
-          <p className="text-sm text-muted-foreground">© {new Date().getFullYear()} Edvanta · edvanta.pk</p>
+          <p className="text-sm text-muted-foreground">© {new Date().getFullYear()} Marksly · marksly.pk</p>
           <div className="flex items-center gap-5 text-sm text-muted-foreground">
             <Link href="/login" className="hover:text-foreground">Sign in</Link>
             <Link href="/register" className="hover:text-foreground">Get started</Link>
-            <a href="mailto:support@edvanta.pk" className="hover:text-foreground">Support</a>
+            <a href="mailto:support@marksly.pk" className="hover:text-foreground">Support</a>
           </div>
         </div>
       </footer>

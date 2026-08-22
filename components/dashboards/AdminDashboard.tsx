@@ -125,7 +125,7 @@ export function AdminDashboard() {
         title="Dashboard"
         description={
           isNewInstitution
-            ? "Welcome to Edvanta — let's get your institution set up."
+            ? "Welcome to Marksly — let's get your institution set up."
             : "Welcome back — here's an overview of your institution."
         }
         actions={
@@ -181,7 +181,7 @@ export function AdminDashboard() {
                 <div>
                   <CardTitle>Get your institution ready</CardTitle>
                   <CardDescription>
-                    You haven&apos;t added any data yet — follow these steps to start using Edvanta.
+                    You haven&apos;t added any data yet — follow these steps to start using Marksly.
                   </CardDescription>
                 </div>
               </div>

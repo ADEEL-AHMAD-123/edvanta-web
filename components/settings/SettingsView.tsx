@@ -218,7 +218,7 @@ function BillingTab() {
             </div>
             <div>
               <Label htmlFor="bankAccountTitle">Account title</Label>
-              <Input id="bankAccountTitle" placeholder="e.g. Edvanta (Pvt) Ltd" {...register('bankAccountTitle')} />
+              <Input id="bankAccountTitle" placeholder="e.g. Marksly (Pvt) Ltd" {...register('bankAccountTitle')} />
             </div>
             <div>
               <Label htmlFor="bankIban">IBAN</Label>

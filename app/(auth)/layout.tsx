@@ -84,7 +84,7 @@ export default function AuthLayout({ children }: { children: React.ReactNode }) 
           {children}
 
           <p className="mt-8 text-center text-xs text-muted-foreground">
-            © {new Date().getFullYear()} Edvanta · edvanta.pk
+            © {new Date().getFullYear()} Marksly · marksly.pk
           </p>
         </div>
       </main>

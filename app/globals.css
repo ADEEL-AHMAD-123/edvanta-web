@@ -15,7 +15,7 @@
    ════════════════════════════════════════════════════════════════════ */
 
 @layer base {
-  /* ── THEME: EDVANTA NAVY (default) ─────────────────────────────── */
+  /* ── THEME: MARKSLY NAVY (default) ─────────────────────────────── */
   :root,
   [data-theme='blue'] {
     --background: 36 33% 97%;
